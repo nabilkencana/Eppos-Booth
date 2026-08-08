@@ -74,5 +74,9 @@
 	<string>Eppos Photobooth membutuhkan izin untuk menyimpan foto ke galeri Anda.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Eppos Photobooth membutuhkan akses mikrofon untuk fitur kamera.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Eppos Photobooth membutuhkan akses Bluetooth untuk terhubung ke printer thermal.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Eppos Photobooth membutuhkan akses Bluetooth untuk terhubung ke printer thermal.</string>
 </dict>
 </plist>
