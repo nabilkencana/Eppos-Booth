@@ -1,0 +1,41 @@
+PODS:
+  - blue_thermal_printer (0.0.1):
+    - Flutter
+  - camera_avfoundation (0.0.1):
+    - Flutter
+  - Flutter (1.0.0)
+  - gal (1.0.0):
+    - Flutter
+    - FlutterMacOS
+  - permission_handler_apple (9.4.8):
+    - Flutter
+
+DEPENDENCIES:
+  - blue_thermal_printer (from `.symlinks/plugins/blue_thermal_printer/ios`)
+  - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
+  - Flutter (from `Flutter`)
+  - gal (from `.symlinks/plugins/gal/darwin`)
+  - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
+
+EXTERNAL SOURCES:
+  blue_thermal_printer:
+    :path: ".symlinks/plugins/blue_thermal_printer/ios"
+  camera_avfoundation:
+    :path: ".symlinks/plugins/camera_avfoundation/ios"
+  Flutter:
+    :path: Flutter
+  gal:
+    :path: ".symlinks/plugins/gal/darwin"
+  permission_handler_apple:
+    :path: ".symlinks/plugins/permission_handler_apple/ios"
+
+SPEC CHECKSUMS:
+  blue_thermal_printer: d859595ae87fd0d2317a7f023d32551db13775df
+  camera_avfoundation: 5675ca25298b6f81fa0a325188e7df62cc217741
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  gal: baecd024ebfd13c441269ca7404792a7152fde89
+  permission_handler_apple: 92d754bbaa7361d436db2d6c3c1c2a0fdcec462e
+
+PODFILE CHECKSUM: 251cb053df7158f337c0712f2ab29f4e0fa474ce
+
+COCOAPODS: 1.17.0

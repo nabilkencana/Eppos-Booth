@@ -1,0 +1,800 @@
+import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/photobooth_provider.dart';
+
+class PrinterSettingsScreen extends StatefulWidget {
+  const PrinterSettingsScreen({super.key});
+
+  @override
+  State<PrinterSettingsScreen> createState() => _PrinterSettingsScreenState();
+}
+
+class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
+  bool _isScanning = false;
+  bool _isConnecting = false;
+  String _connectingDeviceName = "";
+
+  @override
+  Widget build(BuildContext context) {
+    const scaffoldBgColor = Color(0xFFF4F4F5); // Light zinc/grey background
+
+    return Consumer<PhotoboothProvider>(
+      builder: (context, provider, child) {
+        final printerService = provider.printerService;
+        final isConnected = printerService.isConnected;
+        final selectedDeviceName =
+            printerService.selectedDevice?.name ?? "Eppos 58mm Thermal";
+
+        return Scaffold(
+          backgroundColor: scaffoldBgColor,
+          body: Column(
+            children: [
+              // 1. Custom Top Header
+              _CustomHeader(
+                onBackTap: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+
+              // 2. Main Scrollable Settings Body
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // --- CARD 1: Printer Connection ---
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                // Leading Rounded Square Printer Icon Container
+                                Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF4F4F5),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Icon(
+                                    Icons.print_outlined,
+                                    color: Color(0xFF18181B),
+                                    size: 26,
+                                  ),
+                                ),
+                                const Gap(16),
+                                // Device Name & Connected Badge
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        selectedDeviceName,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFF111827),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const Gap(6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isConnected
+                                              ? const Color(0xFFECFDF5)
+                                              : const Color(0xFFFEF2F2),
+                                          borderRadius:
+                                              BorderRadius.circular(9999),
+                                          border: Border.all(
+                                            color: isConnected
+                                                ? const Color(0xFFA7F3D0)
+                                                : const Color(0xFFFCA5A5),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: isConnected
+                                                    ? const Color(0xFF10B981)
+                                                    : const Color(0xFFEF4444),
+                                              ),
+                                            ),
+                                            const Gap(6),
+                                            Text(
+                                              isConnected
+                                                  ? "Terhubung"
+                                                  : "Terputus",
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: isConnected
+                                                    ? const Color(0xFF059669)
+                                                    : const Color(0xFFDC2626),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const Gap(20),
+
+                            // Connect / Scan Pill Button
+                            GestureDetector(
+                              onTap: (_isScanning || _isConnecting)
+                                  ? null
+                                  : () {
+                                      if (isConnected) {
+                                        printerService.disconnect();
+                                        setState(() {});
+                                      } else {
+                                        _showDevicePickerBottomSheet(
+                                            context, provider);
+                                      }
+                                    },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: double.infinity,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: (_isScanning || _isConnecting)
+                                      ? const Color(0xFFF3F4F6)
+                                      : isConnected
+                                          ? const Color(0xFFFEF2F2)
+                                          : const Color(0xFFECFDF5),
+                                  borderRadius: BorderRadius.circular(9999),
+                                  border: Border.all(
+                                    color: (_isScanning || _isConnecting)
+                                        ? const Color(0xFFE5E7EB)
+                                        : isConnected
+                                            ? const Color(0xFFFCA5A5)
+                                            : const Color(0xFF86EFAC),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (_isScanning || _isConnecting) ...[
+                                      const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFF16A34A),
+                                        ),
+                                      ),
+                                      const Gap(10),
+                                    ],
+                                    Text(
+                                      _isScanning
+                                          ? "Memindai perangkat..."
+                                          : _isConnecting
+                                              ? "Menghubungkan ke $_connectingDeviceName..."
+                                              : isConnected
+                                                  ? "Putuskan Koneksi"
+                                                  : "Pindai & Hubungkan Printer",
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: (_isScanning || _isConnecting)
+                                            ? const Color(0xFF6B7280)
+                                            : isConnected
+                                                ? const Color(0xFFDC2626)
+                                                : const Color(0xFF15803D),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const Gap(20),
+
+                      // --- CARD 2: Print Preferences ---
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "PREFERENSI CETAK",
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF6B7280),
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                            const Gap(16),
+
+                            // Preference Item 1
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    "Cetak Otomatis setelah foto",
+                                    style: GoogleFonts.inter(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF111827),
+                                    ),
+                                  ),
+                                ),
+                                CustomSettingsToggle(
+                                  value: provider.autoPrintOnCapture,
+                                  onChanged: (val) =>
+                                      provider.toggleAutoPrint(val),
+                                ),
+                              ],
+                            ),
+
+                            const Divider(
+                              color: Color(0xFFF3F4F6),
+                              height: 32,
+                            ),
+
+                            // Preference Item 2
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    "Jumlah Kopi Cetakan",
+                                    style: GoogleFonts.inter(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF111827),
+                                    ),
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.remove_circle_outline,
+                                        color: Color(0xFF4B5563),
+                                      ),
+                                      onPressed: () => provider
+                                          .setCopies(provider.copies - 1),
+                                    ),
+                                    Text(
+                                      "${provider.copies}",
+                                      style: GoogleFonts.jetBrainsMono(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF111827),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.add_circle_outline,
+                                        color: Color(0xFF4B5563),
+                                      ),
+                                      onPressed: () => provider
+                                          .setCopies(provider.copies + 1),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const Gap(20),
+
+                      // --- CARD 3: Session Info ---
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "INFO SESI",
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF6B7280),
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                            const Gap(16),
+
+                            Text(
+                              "Durasi Hitung Mundur",
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF111827),
+                              ),
+                            ),
+
+                            const Gap(16),
+
+                            // Segmented Timer Control
+                            CustomSegmentedControl(
+                              selectedIndex: provider.timerDelaySeconds == 3
+                                  ? 0
+                                  : (provider.timerDelaySeconds == 5 ? 1 : 2),
+                              options: const ["3s", "5s", "10s"],
+                              onSelected: (idx) {
+                                final delays = [3, 5, 10];
+                                provider.setTimerDelay(delays[idx]);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const Gap(40),
+
+                      // Footer Version Info
+                      Center(
+                        child: Text(
+                          "v1.0.0 - Malang, ID",
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 12,
+                            color: const Color(0xFF9CA3AF),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+
+                      const Gap(16),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showDevicePickerBottomSheet(
+      BuildContext context, PhotoboothProvider provider) async {
+    // Phase 1: Scanning loading
+    setState(() => _isScanning = true);
+    final devices = await provider.printerService.getDevices();
+    if (mounted) setState(() => _isScanning = false);
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD1D5DB),
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                ),
+              ),
+              const Gap(16),
+              Text(
+                "Pilih Printer Bluetooth Eppos",
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF111827),
+                ),
+              ),
+              const Gap(4),
+              Text(
+                devices.isEmpty
+                    ? "Tidak ada printer ditemukan"
+                    : "${devices.length} perangkat ditemukan",
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: const Color(0xFF9CA3AF),
+                ),
+              ),
+              const Gap(16),
+              if (devices.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.bluetooth_disabled_rounded,
+                          size: 40,
+                          color: Color(0xFFD1D5DB),
+                        ),
+                        const Gap(12),
+                        Text(
+                          "Pastikan Bluetooth HP & Printer\nEppos Anda sudah menyala dan\nsudah dipasangkan (paired).",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: const Color(0xFF6B7280),
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: devices.length,
+                  separatorBuilder: (_, _) => const Divider(
+                    height: 1,
+                    color: Color(0xFFF3F4F6),
+                  ),
+                  itemBuilder: (ctx, index) {
+                    final device = devices[index];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 4),
+                      leading: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFECFDF5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.print_rounded,
+                          color: Color(0xFF16A34A),
+                          size: 22,
+                        ),
+                      ),
+                      title: Text(
+                        device.name ?? "Eppos Thermal Printer",
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: const Color(0xFF111827),
+                        ),
+                      ),
+                      subtitle: Text(
+                        device.address ?? "",
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 11,
+                          color: const Color(0xFF9CA3AF),
+                        ),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                      onTap: () async {
+                        Navigator.pop(sheetCtx);
+                        // Phase 2: Connecting loading
+                        if (mounted) {
+                          setState(() {
+                            _isConnecting = true;
+                            _connectingDeviceName =
+                                device.name ?? "Printer";
+                          });
+                        }
+                        final success =
+                            await provider.printerService.connect(device);
+                        if (context.mounted) {
+                          setState(() => _isConnecting = false);
+                          if (success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor: const Color(0xFF16A34A),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle_outline,
+                                        color: Colors.white, size: 18),
+                                    const Gap(10),
+                                    Text(
+                                      "Terhubung ke ${device.name ?? 'Printer'}!",
+                                      style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor: const Color(0xFFDC2626),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.error_outline,
+                                        color: Colors.white, size: 18),
+                                    const Gap(10),
+                                    Text(
+                                      "Gagal terhubung. Coba lagi.",
+                                      style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    );
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ==========================================
+// 1. CUSTOM TOP HEADER BAR
+// ==========================================
+class _CustomHeader extends StatelessWidget {
+  final VoidCallback onBackTap;
+
+  const _CustomHeader({required this.onBackTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Back Arrow Icon (Dark Green)
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(
+                    Icons.arrow_back,
+                    color: Color(0xFF16A34A),
+                    size: 24,
+                  ),
+                  onPressed: onBackTap,
+                ),
+
+                // Monospace Title "PENGATURAN"
+                Text(
+                  "PENGATURAN",
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF16A34A),
+                    letterSpacing: 2.0,
+                  ),
+                ),
+
+                // Balance Spacer
+                const SizedBox(width: 24),
+              ],
+            ),
+          ),
+        ),
+
+        // Thick Dark Divider Line
+        Container(
+          height: 4,
+          width: double.infinity,
+          color: const Color(0xFF27272A),
+        ),
+      ],
+    );
+  }
+}
+
+// ==========================================
+// 2. CUSTOM SETTINGS TOGGLE WIDGET
+// ==========================================
+class CustomSettingsToggle extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const CustomSettingsToggle({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 54,
+        height: 30,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(9999),
+          color: value ? const Color(0xFF10B981) : const Color(0xFFE5E7EB),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 200),
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 24,
+            height: 24,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF2563EB), // Vibrant blue thumb
+            ),
+            child: const Icon(
+              Icons.check,
+              color: Colors.white,
+              size: 14,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// 3. CUSTOM SEGMENTED CONTROL WIDGET
+// ==========================================
+class CustomSegmentedControl extends StatelessWidget {
+  final int selectedIndex;
+  final List<String> options;
+  final ValueChanged<int> onSelected;
+
+  const CustomSegmentedControl({
+    super.key,
+    required this.selectedIndex,
+    required this.options,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 44,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(9999),
+      ),
+      child: Row(
+        children: List.generate(
+          options.length,
+          (index) {
+            final isSelected = selectedIndex == index;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => onSelected(index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(9999),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      options[index],
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected
+                            ? const Color(0xFF111827)
+                            : const Color(0xFF6B7280),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
