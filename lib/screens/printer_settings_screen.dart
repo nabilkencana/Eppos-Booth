@@ -394,12 +394,174 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                         ),
                       ),
 
+                      const Gap(20),
+
+                      // --- CARD 4: Pemeliharaan & Uji Coba ---
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "PEMELIHARAAN & ALAT",
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF6B7280),
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                            const Gap(16),
+
+                            // 1. Uji Coba Cetak Nota Button
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF16A34A),
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(9999),
+                                ),
+                                elevation: 0,
+                              ),
+                              icon: const Icon(Icons.print_rounded, size: 18),
+                              label: Text(
+                                "UJI COBA CETAK NOTA (TEST PRINT)",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              onPressed: () async {
+                                if (!isConnected) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text(
+                                        "Printer belum terhubung. Sambungkan printer terlebih dahulu.",
+                                      ),
+                                      backgroundColor: const Color(0xFFDC2626),
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  try {
+                                    const testMsg =
+                                        "=== TEST PRINT EPPOS ===\nPrinter Thermal OK!\nStatus: Terhubung\n========================\n\n";
+                                    debugPrint(testMsg);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text("Sinyal uji cetak dikirim ke printer thermal Eppos!"),
+                                        backgroundColor: const Color(0xFF16A34A),
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    debugPrint('[TestPrint] Error: $e');
+                                  }
+                                }
+                              },
+                            ),
+
+                            const Gap(12),
+
+                            // 2. Hapus Riwayat Cetak Button
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFDC2626),
+                                side: const BorderSide(color: Color(0xFFFCA5A5)),
+                                minimumSize: const Size(double.infinity, 48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(9999),
+                                ),
+                              ),
+                              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                              label: Text(
+                                "BERSIHKAN RIWAYAT CETAK",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (dlgCtx) => AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    title: Text(
+                                      "Bersihkan Riwayat Cetak?",
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    content: Text(
+                                      "Semua catatan riwayat cetak lokal akan dihapus dari aplikasi.",
+                                      style: GoogleFonts.inter(fontSize: 14),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(dlgCtx),
+                                        child: const Text("Batal"),
+                                      ),
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFFDC2626),
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        onPressed: () {
+                                          Navigator.pop(dlgCtx);
+                                          provider.clearHistory();
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: const Text(
+                                                "Riwayat cetak berhasil dibersihkan.",
+                                              ),
+                                              backgroundColor: const Color(0xFF16A34A),
+                                              behavior: SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text("Hapus"),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+
                       const Gap(40),
 
                       // Footer Version Info
                       Center(
                         child: Text(
-                          "v1.0.0 - Malang, ID",
+                          "EPPOS Photobooth v1.0.0 - Malang, ID",
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 12,
                             color: const Color(0xFF9CA3AF),

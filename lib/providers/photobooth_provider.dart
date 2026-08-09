@@ -185,6 +185,13 @@ class PhotoboothProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Bersihkan seluruh riwayat cetak lokal
+  void clearHistory() {
+    _printHistory.clear();
+    notifyListeners();
+  }
+
+
   /// Simpan strip image bytes ke galeri HP dan ke riwayat cetak.
   /// Mengembalikan path file strip yang tersimpan di local storage.
   Future<String?> saveStripToGalleryAndHistory({
