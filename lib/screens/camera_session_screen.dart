@@ -19,6 +19,7 @@ class _CameraSessionScreenState extends State<CameraSessionScreen>
   late Animation<double> _flashAnimation;
 
   bool _isCapturing = false;
+  bool _isAutoBurst = true; // Default auto burst
   int _currentCountdown = 0;
   int _currentPhotoIndex = 0;
 
@@ -39,8 +40,6 @@ class _CameraSessionScreenState extends State<CameraSessionScreen>
   Future<void> _initCamera() async {
     if (!mounted) return;
     final svc = context.read<PhotoboothProvider>().cameraService;
-    // iOS butuh sedikit delay setelah frame pertama render
-    // sebelum membuka kamera — mencegah freeze/deadlock
     await Future.delayed(const Duration(milliseconds: 100));
     if (!mounted) return;
     await svc.initializeCamera();
@@ -57,7 +56,46 @@ class _CameraSessionScreenState extends State<CameraSessionScreen>
     _flashController.forward(from: 0.0).then((_) => _flashController.reverse());
   }
 
-  Future<void> _startAutoBurstSession() async {
+  void _toggleAutoBurstMode() {
+    if (_isCapturing) return;
+
+    setState(() {
+      _isAutoBurst = !_isAutoBurst;
+      _currentPhotoIndex = 0;
+    });
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        backgroundColor:
+            _isAutoBurst ? const Color(0xFF16A34A) : const Color(0xFF3F3F46),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Row(
+          children: [
+            Icon(
+              _isAutoBurst ? Icons.bolt_rounded : Icons.touch_app_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+            const Gap(10),
+            Text(
+              _isAutoBurst
+                  ? "Mode Auto Burst Aktif (Otomatis)"
+                  : "Mode Manual Aktif (Jepret Satu-Satu)",
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _startPhotoCaptureSession() async {
     if (_isCapturing) return;
 
     final provider = context.read<PhotoboothProvider>();
@@ -93,18 +131,73 @@ class _CameraSessionScreenState extends State<CameraSessionScreen>
 
     final targetCount = provider.selectedTemplate.defaultFrameCount;
 
-    setState(() {
-      _isCapturing = true;
-      _currentPhotoIndex = 0;
-      _currentCountdown = 0;
-    });
+    if (_isAutoBurst) {
+      // ══════════════════════════════════════════════════════
+      // MODE 1: AUTO BURST (Otomatis Ambil Semua Foto)
+      // ══════════════════════════════════════════════════════
+      setState(() {
+        _isCapturing = true;
+        _currentPhotoIndex = 0;
+        _currentCountdown = 0;
+      });
 
-    provider.clearCapturedPhotos();
+      provider.clearCapturedPhotos();
 
-    for (int i = 0; i < targetCount; i++) {
-      if (!mounted) break;
+      for (int i = 0; i < targetCount; i++) {
+        if (!mounted) break;
 
-      setState(() => _currentPhotoIndex = i + 1);
+        setState(() => _currentPhotoIndex = i + 1);
+
+        // Countdown 3 → 2 → 1
+        for (int count = 3; count > 0; count--) {
+          if (!mounted) break;
+          setState(() => _currentCountdown = count);
+          await Future.delayed(const Duration(seconds: 1));
+        }
+
+        if (!mounted) break;
+        setState(() => _currentCountdown = 0);
+
+        _triggerFlash();
+        final file = await svc.takePicture();
+        if (file != null) provider.addCapturedPhoto(file.path);
+
+        await Future.delayed(const Duration(milliseconds: 400));
+      }
+
+      if (!mounted) return;
+      setState(() => _isCapturing = false);
+
+      if (provider.capturedPhotos.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            content: Text("Gagal mengambil foto. Coba lagi.",
+                style: GoogleFonts.inter(color: Colors.white)),
+          ),
+        );
+        return;
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ReviewScreen()),
+      );
+    } else {
+      // ══════════════════════════════════════════════════════
+      // MODE 2: MANUAL SINGLE SHOT (Satu Foto Per Tap)
+      // ══════════════════════════════════════════════════════
+      if (_currentPhotoIndex == 0) {
+        provider.clearCapturedPhotos();
+      }
+
+      final nextPhotoIndex = _currentPhotoIndex + 1;
+
+      setState(() {
+        _isCapturing = true;
+        _currentPhotoIndex = nextPhotoIndex;
+      });
 
       // Countdown 3 → 2 → 1
       for (int count = 3; count > 0; count--) {
@@ -113,36 +206,27 @@ class _CameraSessionScreenState extends State<CameraSessionScreen>
         await Future.delayed(const Duration(seconds: 1));
       }
 
-      if (!mounted) break;
+      if (!mounted) return;
       setState(() => _currentCountdown = 0);
 
       _triggerFlash();
       final file = await svc.takePicture();
       if (file != null) provider.addCapturedPhoto(file.path);
 
-      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+
+      if (_currentPhotoIndex >= targetCount) {
+        // Semua foto manual sudah selesai diambil!
+        setState(() => _isCapturing = false);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ReviewScreen()),
+        );
+      } else {
+        // Siap untuk foto manual berikutnya
+        setState(() => _isCapturing = false);
+      }
     }
-
-    if (!mounted) return;
-    setState(() => _isCapturing = false);
-
-    if (provider.capturedPhotos.isEmpty) {
-      // Tidak ada foto berhasil diambil — tampilkan error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-          content: Text("Gagal mengambil foto. Coba lagi.",
-              style: GoogleFonts.inter(color: Colors.white)),
-        ),
-      );
-      return;
-    }
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const ReviewScreen()),
-    );
   }
 
   @override
@@ -154,7 +238,9 @@ class _CameraSessionScreenState extends State<CameraSessionScreen>
 
     final badgeText = _isCapturing
         ? "Foto $_currentPhotoIndex / $targetCount"
-        : "Auto burst";
+        : (_currentPhotoIndex > 0
+            ? "Foto $_currentPhotoIndex / $targetCount"
+            : (_isAutoBurst ? "Auto burst" : "Manual photo"));
 
     return Scaffold(
       backgroundColor: bg,
@@ -166,7 +252,9 @@ class _CameraSessionScreenState extends State<CameraSessionScreen>
               _TopHeader(
                 badgeText: badgeText,
                 isCapturing: _isCapturing,
+                isAutoBurst: _isAutoBurst,
                 hasManyLenses: svc.cameraCount > 1,
+                onToggleAutoBurst: _toggleAutoBurstMode,
                 onToggleCamera: () async {
                   if (!_isCapturing) {
                     await svc.switchCamera();
@@ -207,7 +295,7 @@ class _CameraSessionScreenState extends State<CameraSessionScreen>
                   child: _ShutterButton(
                     isReady: svc.isInitialized && !_isCapturing,
                     isLoading: _isCapturing,
-                    onPressed: _startAutoBurstSession,
+                    onPressed: _startPhotoCaptureSession,
                   ),
                 ),
               ),
@@ -235,14 +323,18 @@ class _CameraSessionScreenState extends State<CameraSessionScreen>
 class _TopHeader extends StatelessWidget {
   final String badgeText;
   final bool isCapturing;
+  final bool isAutoBurst;
   final bool hasManyLenses;
+  final VoidCallback onToggleAutoBurst;
   final VoidCallback onToggleCamera;
   final VoidCallback onBackTap;
 
   const _TopHeader({
     required this.badgeText,
     required this.isCapturing,
+    required this.isAutoBurst,
     required this.hasManyLenses,
+    required this.onToggleAutoBurst,
     required this.onToggleCamera,
     required this.onBackTap,
   });
@@ -270,20 +362,57 @@ class _TopHeader extends StatelessWidget {
                 onPressed: isCapturing ? null : onBackTap,
               ),
 
-              // Badge
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4ADE80),
-                  borderRadius: BorderRadius.circular(9999),
-                ),
-                child: Text(
-                  badgeText,
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF18181B),
+              // Interactive Badge (Toggle Auto Burst vs Manual Photo)
+              GestureDetector(
+                onTap: isCapturing ? null : onToggleAutoBurst,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isCapturing
+                        ? const Color(0xFF4ADE80)
+                        : (isAutoBurst
+                            ? const Color(0xFF4ADE80)
+                            : const Color(0xFF3F3F46)),
+                    borderRadius: BorderRadius.circular(9999),
+                    border: Border.all(
+                      color: isAutoBurst
+                          ? Colors.transparent
+                          : const Color(0xFF71717A),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isCapturing
+                            ? Icons.camera_alt_rounded
+                            : (isAutoBurst
+                                ? Icons.bolt_rounded
+                                : Icons.touch_app_rounded),
+                        size: 15,
+                        color: isCapturing
+                            ? const Color(0xFF18181B)
+                            : (isAutoBurst
+                                ? const Color(0xFF18181B)
+                                : Colors.white),
+                      ),
+                      const Gap(6),
+                      Text(
+                        badgeText,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isCapturing
+                              ? const Color(0xFF18181B)
+                              : (isAutoBurst
+                                  ? const Color(0xFF18181B)
+                                  : Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
