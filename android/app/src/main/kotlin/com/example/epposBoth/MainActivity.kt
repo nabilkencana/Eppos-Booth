@@ -1,4 +1,4 @@
-package com.example.eppos_both
+package com.example.epposBoth
 
 import io.flutter.embedding.android.FlutterActivity
 
