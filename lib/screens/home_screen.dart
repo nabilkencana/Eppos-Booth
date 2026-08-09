@@ -40,14 +40,20 @@ class _HomeScreenState extends State<HomeScreen> {
           Positioned(
             left: 24,
             right: 24,
-            bottom: 24,
-            child: FloatingBottomNav(
-              currentIndex: _currentNavIndex,
-              onTap: (index) {
-                setState(() {
-                  _currentNavIndex = index;
-                });
-              },
+            bottom: 0,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: FloatingBottomNav(
+                  currentIndex: _currentNavIndex,
+                  onTap: (index) {
+                    setState(() {
+                      _currentNavIndex = index;
+                    });
+                  },
+                ),
+              ),
             ),
           ),
         ],
@@ -73,7 +79,7 @@ class _HomeDashboardView extends StatelessWidget {
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(24, 32, 24, 110),
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 140),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
@@ -111,7 +117,7 @@ class _GalleryGridView extends StatelessWidget {
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 110),
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 140),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -211,7 +217,7 @@ class _PrintHistoryView extends StatelessWidget {
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 110),
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 140),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

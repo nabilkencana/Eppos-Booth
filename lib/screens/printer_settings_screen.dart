@@ -44,7 +44,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 140),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
