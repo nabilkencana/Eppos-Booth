@@ -683,35 +683,10 @@ class _PixelatedLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 4x4 Grid representation of the 8-bit logo
-    final gridPattern = [
-      [1, 1, 0, 0],
-      [1, 1, 1, 1],
-      [1, 0, 1, 1],
-      [1, 1, 1, 1],
-    ];
-
-    return SizedBox(
-      width: 36,
-      height: 36,
-      child: Column(
-        children: gridPattern.map((row) {
-          return Expanded(
-            child: Row(
-              children: row.map((cell) {
-                return Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.all(0.8),
-                    color: cell == 1
-                        ? const Color(0xFF18181B)
-                        : Colors.transparent,
-                  ),
-                );
-              }).toList(),
-            ),
-          );
-        }).toList(),
-      ),
+    return Image.asset(
+      "assets/images/logo.png",
+      height: 44,
+      fit: BoxFit.contain,
     );
   }
 }

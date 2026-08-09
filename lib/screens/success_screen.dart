@@ -61,7 +61,10 @@ class _SuccessScreenState extends State<SuccessScreen> {
   Widget build(BuildContext context) {
     const scaffoldBgColor = Color(0xFFF2F5F0);
 
-    final activeQrData = widget.downloadUrl ?? "https://eppos.app/session/$_activeSessionId";
+    final activeQrData = (widget.downloadUrl != null &&
+            widget.downloadUrl!.startsWith("http"))
+        ? widget.downloadUrl!
+        : "https://google.com";
 
     return Scaffold(
       backgroundColor: scaffoldBgColor,
