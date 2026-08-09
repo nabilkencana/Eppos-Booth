@@ -462,12 +462,35 @@ class _CameraViewfinder extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Kamera live preview atau state placeholder
-          // Stack(StackFit.expand) sudah memberikan bounded constraints,
-          // jadi cukup SizedBox.expand — tidak perlu FittedBox.
+          // Kamera live preview (Full Screen Cover)
           if (svc.isInitialized) ...[
-            SizedBox.expand(
-              child: CameraPreview(svc.controller!),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final previewSize = svc.controller!.value.previewSize;
+                // Sensitivitas orientasi: di portrait height = width sensor, width = height sensor
+                final cameraAspectRatio = (previewSize != null && previewSize.width > 0)
+                    ? (previewSize.height / previewSize.width)
+                    : svc.controller!.value.aspectRatio;
+
+                final screenAspectRatio =
+                    constraints.maxWidth / constraints.maxHeight;
+
+                // Hitung skala agar kamera menutupi seluruh layar (Cover Full Screen)
+                double scale = 1.0;
+                if (cameraAspectRatio > 0 && screenAspectRatio > 0) {
+                  scale = cameraAspectRatio / screenAspectRatio;
+                  if (scale < 1.0) scale = 1.0 / scale;
+                }
+
+                return ClipRect(
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Center(
+                      child: CameraPreview(svc.controller!),
+                    ),
+                  ),
+                );
+              },
             ),
           ] else if (svc.isInitializing) ...[
             const _ViewfinderLoading(),
