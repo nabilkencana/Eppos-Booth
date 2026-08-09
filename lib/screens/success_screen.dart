@@ -233,10 +233,10 @@ class _CustomHeader extends StatelessWidget {
               children: [
                 Image.asset(
                   "assets/images/logo.png",
-                  height: 28,
+                  height: 36,
                   fit: BoxFit.contain,
                 ),
-                const Gap(8),
+                const Gap(10),
                 Text(
                   "EPPOSBOOTH",
                   style: GoogleFonts.inter(

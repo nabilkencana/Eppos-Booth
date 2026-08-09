@@ -310,20 +310,20 @@ class _CustomHeader extends StatelessWidget {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
                 "assets/images/logo.png",
-                height: 34,
+                height: 44,
                 fit: BoxFit.contain,
               ),
-              const Gap(10),
+              const Gap(12),
               Text(
                 "EPPOS BOOTH",
                 style: GoogleFonts.inter(
-                  fontSize: 19,
+                  fontSize: 21,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.0,
                   color: const Color(0xFF15803D), // Rich dark green
