@@ -5,7 +5,9 @@ import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../providers/photobooth_provider.dart';
+
 import 'printer_settings_screen.dart';
 import 'template_selection_screen.dart';
 
@@ -161,29 +163,40 @@ class _GalleryGridView extends StatelessWidget {
                           final path = galleryPhotos[index];
                           final isUrl = path.startsWith("http");
 
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: isUrl
-                                  ? Image.network(
-                                      path,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Image.file(
-                                      File(path),
-                                      fit: BoxFit.cover,
-                                    ),
+                          return GestureDetector(
+                            onTap: () {
+                              _showPhotoDetailModal(
+                                context,
+                                imagePath: path,
+                                title: "Galeri Foto #${index + 1}",
+                                location: "Malang, ID",
+                                date: "Hasil Cetakan Sesi",
+                              );
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: isUrl
+                                    ? Image.network(
+                                        path,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Image.file(
+                                        File(path),
+                                        fit: BoxFit.cover,
+                                      ),
+                              ),
                             ),
                           );
                         },
@@ -582,22 +595,32 @@ class _RecentPrintCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUrl = imagePath.startsWith("http");
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 16,
-            spreadRadius: 0,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
+    return GestureDetector(
+      onTap: () {
+        _showPhotoDetailModal(
+          context,
+          imagePath: imagePath,
+          title: title,
+          location: location,
+          date: date,
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 16,
+              spreadRadius: 0,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
@@ -692,8 +715,9 @@ class _RecentPrintCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 // ==========================================
@@ -849,3 +873,266 @@ class FloatingBottomNav extends StatelessWidget {
     );
   }
 }
+
+// ==========================================
+// 8. POPUP MODAL DETAIL FOTO & WHATSAPP / CETAK ULANG
+// ==========================================
+void _showPhotoDetailModal(
+  BuildContext context, {
+  required String imagePath,
+  required String title,
+  required String location,
+  required String date,
+}) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (sheetCtx) {
+      final isUrl = imagePath.startsWith("http");
+
+      return Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 20,
+          bottom: MediaQuery.of(sheetCtx).padding.bottom + 24,
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4E4E7),
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                ),
+              ),
+              const Gap(16),
+
+              // Header Title
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: GoogleFonts.inter(
+                            fontSize: 19,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF18181B),
+                          ),
+                        ),
+                        const Gap(2),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.location_on_outlined,
+                              size: 14,
+                              color: Color(0xFF71717A),
+                            ),
+                            const Gap(4),
+                            Text(
+                              "$location • $date",
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: const Color(0xFF71717A),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(sheetCtx),
+                    icon: const Icon(Icons.close_rounded, color: Color(0xFF71717A)),
+                  ),
+                ],
+              ),
+              const Gap(16),
+
+              // Image Preview Card
+              Center(
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 360),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF18181B),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: imagePath.isEmpty
+                        ? const Center(
+                            child: Icon(Icons.photo_outlined,
+                                color: Colors.white54, size: 48),
+                          )
+                        : (isUrl
+                            ? Image.network(imagePath, fit: BoxFit.contain)
+                            : Image.file(File(imagePath), fit: BoxFit.contain)),
+                  ),
+                ),
+              ),
+              const Gap(24),
+
+              Text(
+                "OPSI & TINDAKAN",
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFA1A1AA),
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const Gap(12),
+
+              // 1. BAGIKAN KE WHATSAPP / SOSMED
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366), // WhatsApp green
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.share_rounded, size: 20),
+                label: Text(
+                  "BAGIKAN KE WHATSAPP / SOSMED",
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                onPressed: () async {
+                  try {
+                    if (isUrl) {
+                      await Share.share(
+                        "Hasil foto EPPOS Photobooth! 📸\nLihat foto di sini: $imagePath",
+                      );
+                    } else if (File(imagePath).existsSync()) {
+                      await Share.shareXFiles(
+                        [XFile(imagePath)],
+                        text: "Hasil cetakan EPPOS Photobooth! 📸✨",
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text("File foto tidak ditemukan."),
+                          backgroundColor: const Color(0xFFDC2626),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    debugPrint('[Share] Error: $e');
+                  }
+                },
+              ),
+              const Gap(12),
+
+              // 2. CETAK ULANG FOTO INI
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF15803D),
+                  side: const BorderSide(color: Color(0xFF16A34A), width: 1.5),
+                  minimumSize: const Size(double.infinity, 52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                ),
+                icon: const Icon(Icons.print_rounded, size: 20),
+                label: Text(
+                  "CETAK ULANG FOTO INI",
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                onPressed: () async {
+                  Navigator.pop(sheetCtx);
+                  final provider =
+                      Provider.of<PhotoboothProvider>(context, listen: false);
+
+                  if (!provider.printerService.isConnected) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(
+                          "Printer belum terhubung. Sambungkan printer terlebih dahulu di menu Pengaturan.",
+                        ),
+                        backgroundColor: const Color(0xFFDC2626),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PrinterSettingsScreen(),
+                      ),
+                    );
+                  } else {
+                    try {
+                      if (!isUrl && File(imagePath).existsSync()) {
+                        final bytes = await File(imagePath).readAsBytes();
+                        await provider.printerService.printReceiptImage(bytes);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text(
+                                "Cetak ulang berhasil dikirim ke printer Eppos! 🖨️",
+                              ),
+                              backgroundColor: const Color(0xFF16A34A),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      debugPrint('[RePrint] Error: $e');
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
