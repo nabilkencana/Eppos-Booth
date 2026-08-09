@@ -584,62 +584,19 @@ class _ThermalReceiptPaper extends StatelessWidget {
 
           const Gap(16),
 
-          // Column of 4 Raw Thermal Prints with Thick Black Borders
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              children: List.generate(
-                4,
-                (index) {
-                  final path = photoUrls[index % photoUrls.length];
-                  final isLast = index == 3;
-                  final isUrl = path.startsWith("http");
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(
-                        color: const Color(0xFF18181B),
-                        width: 3.5, // Thick raw thermal frame border
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        AspectRatio(
-                          aspectRatio: 1.35,
-                          child: isUrl
-                              ? Image.network(
-                                  path,
-                                  fit: BoxFit.cover,
-                                  color: Colors.grey,
-                                  colorBlendMode: BlendMode.saturation,
-                                  errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
-                                )
-                              : Image.file(
-                                  File(path),
-                                  fit: BoxFit.cover,
-                                  color: Colors.grey,
-                                  colorBlendMode: BlendMode.saturation,
-                                  errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
-                                ),
-                        ),
-                        // Black footer strip on the last photo frame
-                        if (isLast)
-                          Container(
-                            width: double.infinity,
-                            height: 28,
-                            color: const Color(0xFF18181B),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
+          // Dynamic Photo Layout based on selected canvas template (Classic Strip, Square Grid, Bento)
+          Consumer<PhotoboothProvider>(
+            builder: (context, provider, child) {
+              final template = provider.selectedTemplate;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildPhotoLayout(context, template, photoUrls),
+              );
+            },
           ),
 
           const Gap(24),
+
 
           // 8-Bit Pixelated Logo & Footer
           const _PixelatedLogo(),
@@ -656,6 +613,110 @@ class _ThermalReceiptPaper extends StatelessWidget {
           ),
 
           const Gap(28),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoLayout(
+      BuildContext context, PhotoboothTemplate template, List<String> urls) {
+    if (urls.isEmpty) return const SizedBox.shrink();
+
+    switch (template) {
+      case PhotoboothTemplate.squareGrid:
+        // Layout 2x2 Square Grid
+        return Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: _buildSinglePhotoFrame(urls[0 % urls.length], aspectRatio: 1.0)),
+                const Gap(8),
+                Expanded(child: _buildSinglePhotoFrame(urls[1 % urls.length], aspectRatio: 1.0)),
+              ],
+            ),
+            const Gap(8),
+            Row(
+              children: [
+                Expanded(child: _buildSinglePhotoFrame(urls[2 % urls.length], aspectRatio: 1.0)),
+                const Gap(8),
+                Expanded(child: _buildSinglePhotoFrame(urls[3 % urls.length], aspectRatio: 1.0)),
+              ],
+            ),
+          ],
+        );
+
+      case PhotoboothTemplate.bentoStyle:
+        // Layout Bento 3 foto (1 foto besar di atas + 2 foto bersampingan di bawah)
+        return Column(
+          children: [
+            _buildSinglePhotoFrame(urls[0 % urls.length], aspectRatio: 1.5),
+            const Gap(8),
+            Row(
+              children: [
+                Expanded(child: _buildSinglePhotoFrame(urls[1 % urls.length], aspectRatio: 1.0)),
+                const Gap(8),
+                Expanded(child: _buildSinglePhotoFrame(urls[2 % urls.length], aspectRatio: 1.0)),
+              ],
+            ),
+          ],
+        );
+
+      case PhotoboothTemplate.classicStrip:
+        // Layout Klasik 4 foto vertical strip
+
+        return Column(
+          children: List.generate(
+            4,
+            (index) {
+              final path = urls[index % urls.length];
+              final isLast = index == 3;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildSinglePhotoFrame(path, aspectRatio: 1.35, isLast: isLast),
+              );
+            },
+          ),
+        );
+    }
+  }
+
+  Widget _buildSinglePhotoFrame(String path, {double aspectRatio = 1.35, bool isLast = false}) {
+    final isUrl = path.startsWith("http");
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(
+          color: const Color(0xFF18181B),
+          width: 3.5, // Thick raw thermal frame border
+        ),
+      ),
+      child: Column(
+        children: [
+          AspectRatio(
+            aspectRatio: aspectRatio,
+            child: isUrl
+                ? Image.network(
+                    path,
+                    fit: BoxFit.cover,
+                    color: Colors.grey,
+                    colorBlendMode: BlendMode.saturation,
+                    errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
+                  )
+                : Image.file(
+                    File(path),
+                    fit: BoxFit.cover,
+                    color: Colors.grey,
+                    colorBlendMode: BlendMode.saturation,
+                    errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
+                  ),
+          ),
+          if (isLast)
+            Container(
+              width: double.infinity,
+              height: 28,
+              color: const Color(0xFF18181B),
+            ),
         ],
       ),
     );
