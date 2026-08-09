@@ -437,8 +437,16 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetCtx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 20,
+            bottom: MediaQuery.of(sheetCtx).padding.bottom + 24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,22 +463,42 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 ),
               ),
               const Gap(16),
-              Text(
-                "Pilih Printer Bluetooth Eppos",
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF111827),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Pilih Printer Bluetooth Eppos",
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(9999),
+                    ),
+                    child: Text(
+                      "${devices.length} Perangkat",
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF16A34A),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const Gap(4),
-              const Gap(16),
+              const Gap(12),
               // Banner Panduan Sandingkan (Pairing) RPP02N / Eppos
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7), // Light amber
+                  color: const Color(0xFFFEF3C7),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: const Color(0xFFFCD34D),
@@ -496,7 +524,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                           ),
                           children: const [
                             TextSpan(
-                              text: "Printer seperti RPP02N belum muncul?\n",
+                              text: "Printer RPP02N belum muncul di bawah?\n",
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                             TextSpan(
@@ -508,7 +536,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                             TextSpan(
-                              text: " (PIN: 0000 atau 1234).\n3. Kembali & tekan Pindai Ulang.",
+                              text: " (PIN: 0000 / 1234).\n3. Gulir ke bawah pada daftar ini.",
                             ),
                           ],
                         ),
@@ -582,118 +610,138 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                   ),
                 )
               else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: devices.length,
-                  separatorBuilder: (_, _) => const Divider(
-                    height: 1,
-                    color: Color(0xFFF3F4F6),
-                  ),
-                  itemBuilder: (ctx, index) {
-                    final device = devices[index];
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 4, vertical: 4),
-                      leading: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFECFDF5),
-                          borderRadius: BorderRadius.circular(12),
+                Expanded(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: devices.length,
+                    separatorBuilder: (_, _) => const Divider(
+                      height: 1,
+                      color: Color(0xFFF3F4F6),
+                    ),
+                    itemBuilder: (ctx, index) {
+                      final device = devices[index];
+                      final name = (device.name != null && device.name!.isNotEmpty)
+                          ? device.name!
+                          : "Unknown Printer";
+                      final isLikelyPrinter = name.toLowerCase().contains("rpp") ||
+                          name.toLowerCase().contains("printer") ||
+                          name.toLowerCase().contains("pos") ||
+                          name.toLowerCase().contains("eppos") ||
+                          name.toLowerCase().contains("bt") ||
+                          (device.address != null &&
+                              device.address!.startsWith("00:18"));
+
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 6),
+                        leading: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: isLikelyPrinter
+                                ? const Color(0xFFDCFCE7)
+                                : const Color(0xFFF4F4F5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.print_rounded,
+                            color: isLikelyPrinter
+                                ? const Color(0xFF15803D)
+                                : const Color(0xFF71717A),
+                            size: 22,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.print_rounded,
-                          color: Color(0xFF16A34A),
-                          size: 22,
-                        ),
-                      ),
-                      title: Text(
-                        device.name ?? "Eppos Thermal Printer",
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: const Color(0xFF111827),
-                        ),
-                      ),
-                      subtitle: Text(
-                        device.address ?? "",
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 11,
-                          color: const Color(0xFF9CA3AF),
-                        ),
-                      ),
-                      trailing: const Icon(
-                        Icons.chevron_right_rounded,
-                        color: Color(0xFF9CA3AF),
-                      ),
-                      onTap: () async {
-                        Navigator.pop(sheetCtx);
-                        // Phase 2: Connecting loading
-                        if (mounted) {
-                          setState(() {
-                            _isConnecting = true;
-                            _connectingDeviceName =
-                                device.name ?? "Printer";
-                          });
-                        }
-                        final success =
-                            await provider.printerService.connect(device);
-                        if (context.mounted) {
-                          setState(() => _isConnecting = false);
-                          if (success) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                backgroundColor: const Color(0xFF16A34A),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                name,
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                  color: const Color(0xFF111827),
                                 ),
-                                content: Row(
-                                  children: [
-                                    const Icon(Icons.check_circle_outline,
-                                        color: Colors.white, size: 18),
-                                    const Gap(10),
-                                    Text(
-                                      "Terhubung ke ${device.name ?? 'Printer'}!",
-                                      style: GoogleFonts.inter(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                ),
-                                duration: const Duration(seconds: 2),
                               ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                backgroundColor: const Color(0xFFDC2626),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                            ),
+                            if (isLikelyPrinter)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF16A34A),
+                                  borderRadius: BorderRadius.circular(9999),
                                 ),
-                                content: Row(
-                                  children: [
-                                    const Icon(Icons.error_outline,
-                                        color: Colors.white, size: 18),
-                                    const Gap(10),
-                                    Text(
-                                      "Gagal terhubung. Coba lagi.",
-                                      style: GoogleFonts.inter(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
+                                child: Text(
+                                  "PRINTER",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                                duration: const Duration(seconds: 2),
                               ),
-                            );
+                          ],
+                        ),
+                        subtitle: Text(
+                          device.address ?? "",
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 11,
+                            color: const Color(0xFF71717A),
+                          ),
+                        ),
+                        trailing: const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Color(0xFF9CA3AF),
+                        ),
+                        onTap: () async {
+                          Navigator.pop(sheetCtx);
+                          if (mounted) {
+                            setState(() {
+                              _isConnecting = true;
+                              _connectingDeviceName = name;
+                            });
                           }
-                        }
-                      },
-                    );
-                  },
+                          final success =
+                              await provider.printerService.connect(device);
+                          if (context.mounted) {
+                            setState(() => _isConnecting = false);
+                            if (success) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: const Color(0xFF16A34A),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  content: Text(
+                                    "Berhasil terhubung ke $name!",
+                                    style: GoogleFonts.inter(
+                                        color: Colors.white),
+                                  ),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: const Color(0xFFDC2626),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  content: Text(
+                                    "Gagal terhubung ke $name. Pastikan printer menyala.",
+                                    style: GoogleFonts.inter(
+                                        color: Colors.white),
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      );
+                    },
+                  ),
                 ),
             ],
           ),
