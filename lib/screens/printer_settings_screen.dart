@@ -109,8 +109,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                                           color: isConnected
                                               ? const Color(0xFFECFDF5)
                                               : const Color(0xFFFEF2F2),
-                                          borderRadius:
-                                              BorderRadius.circular(9999),
+                                          borderRadius: BorderRadius.circular(
+                                            9999,
+                                          ),
                                           border: Border.all(
                                             color: isConnected
                                                 ? const Color(0xFFA7F3D0)
@@ -164,27 +165,30 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                                         setState(() {});
                                       } else {
                                         _showDevicePickerBottomSheet(
-                                            context, provider);
+                                          context,
+                                          provider,
+                                        );
                                       }
                                     },
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 width: double.infinity,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 decoration: BoxDecoration(
                                   color: (_isScanning || _isConnecting)
                                       ? const Color(0xFFF3F4F6)
                                       : isConnected
-                                          ? const Color(0xFFFEF2F2)
-                                          : const Color(0xFFECFDF5),
+                                      ? const Color(0xFFFEF2F2)
+                                      : const Color(0xFFECFDF5),
                                   borderRadius: BorderRadius.circular(9999),
                                   border: Border.all(
                                     color: (_isScanning || _isConnecting)
                                         ? const Color(0xFFE5E7EB)
                                         : isConnected
-                                            ? const Color(0xFFFCA5A5)
-                                            : const Color(0xFF86EFAC),
+                                        ? const Color(0xFFFCA5A5)
+                                        : const Color(0xFF86EFAC),
                                     width: 1.5,
                                   ),
                                 ),
@@ -206,10 +210,10 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                                       _isScanning
                                           ? "Memindai perangkat..."
                                           : _isConnecting
-                                              ? "Menghubungkan ke $_connectingDeviceName..."
-                                              : isConnected
-                                                  ? "Putuskan Koneksi"
-                                                  : "Pindai & Hubungkan Printer",
+                                          ? "Menghubungkan ke $_connectingDeviceName..."
+                                          : isConnected
+                                          ? "Putuskan Koneksi"
+                                          : "Pindai & Hubungkan Printer",
                                       textAlign: TextAlign.center,
                                       style: GoogleFonts.inter(
                                         fontSize: 14,
@@ -217,8 +221,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                                         color: (_isScanning || _isConnecting)
                                             ? const Color(0xFF6B7280)
                                             : isConnected
-                                                ? const Color(0xFFDC2626)
-                                                : const Color(0xFF15803D),
+                                            ? const Color(0xFFDC2626)
+                                            : const Color(0xFF15803D),
                                       ),
                                     ),
                                   ],
@@ -262,8 +266,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
 
                             // Preference Item 1
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Text(
@@ -283,15 +286,11 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                               ],
                             ),
 
-                            const Divider(
-                              color: Color(0xFFF3F4F6),
-                              height: 32,
-                            ),
+                            const Divider(color: Color(0xFFF3F4F6), height: 32),
 
                             // Preference Item 2
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Text(
@@ -310,8 +309,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                                         Icons.remove_circle_outline,
                                         color: Color(0xFF4B5563),
                                       ),
-                                      onPressed: () => provider
-                                          .setCopies(provider.copies - 1),
+                                      onPressed: () => provider.setCopies(
+                                        provider.copies - 1,
+                                      ),
                                     ),
                                     Text(
                                       "${provider.copies}",
@@ -326,8 +326,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                                         Icons.add_circle_outline,
                                         color: Color(0xFF4B5563),
                                       ),
-                                      onPressed: () => provider
-                                          .setCopies(provider.copies + 1),
+                                      onPressed: () => provider.setCopies(
+                                        provider.copies + 1,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -466,11 +467,17 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                                     debugPrint(testMsg);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: const Text("Sinyal uji cetak dikirim ke printer thermal Eppos!"),
-                                        backgroundColor: const Color(0xFF16A34A),
+                                        content: const Text(
+                                          "Sinyal uji cetak dikirim ke printer thermal Eppos!",
+                                        ),
+                                        backgroundColor: const Color(
+                                          0xFF16A34A,
+                                        ),
                                         behavior: SnackBarBehavior.floating,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                       ),
                                     );
@@ -487,13 +494,18 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                             OutlinedButton.icon(
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: const Color(0xFFDC2626),
-                                side: const BorderSide(color: Color(0xFFFCA5A5)),
+                                side: const BorderSide(
+                                  color: Color(0xFFFCA5A5),
+                                ),
                                 minimumSize: const Size(double.infinity, 48),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(9999),
                                 ),
                               ),
-                              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 18,
+                              ),
                               label: Text(
                                 "BERSIHKAN RIWAYAT CETAK",
                                 style: GoogleFonts.inter(
@@ -526,21 +538,29 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                                       ),
                                       ElevatedButton(
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFFDC2626),
+                                          backgroundColor: const Color(
+                                            0xFFDC2626,
+                                          ),
                                           foregroundColor: Colors.white,
                                         ),
                                         onPressed: () {
                                           Navigator.pop(dlgCtx);
                                           provider.clearHistory();
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
                                             SnackBar(
                                               content: const Text(
                                                 "Riwayat cetak berhasil dibersihkan.",
                                               ),
-                                              backgroundColor: const Color(0xFF16A34A),
-                                              behavior: SnackBarBehavior.floating,
+                                              backgroundColor: const Color(
+                                                0xFF16A34A,
+                                              ),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                               ),
                                             ),
                                           );
@@ -583,7 +603,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   }
 
   Future<void> _showDevicePickerBottomSheet(
-      BuildContext context, PhotoboothProvider provider) async {
+    BuildContext context,
+    PhotoboothProvider provider,
+  ) async {
     // Phase 1: Scanning loading
     setState(() => _isScanning = true);
     final devices = await provider.printerService.getDevices();
@@ -638,7 +660,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFECFDF5),
                       borderRadius: BorderRadius.circular(9999),
@@ -662,10 +686,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFFEF3C7),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFFFCD34D),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFFCD34D), width: 1),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -698,7 +719,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                             TextSpan(
-                              text: " (PIN: 0000 / 1234).\n3. Gulir ke bawah pada daftar ini.",
+                              text:
+                                  " (PIN: 0000 / 1234).\n3. Gulir ke bawah pada daftar ini.",
                             ),
                           ],
                         ),
@@ -754,8 +776,10 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                               vertical: 12,
                             ),
                           ),
-                          icon: const Icon(Icons.settings_bluetooth_rounded,
-                              size: 18),
+                          icon: const Icon(
+                            Icons.settings_bluetooth_rounded,
+                            size: 18,
+                          ),
                           label: Text(
                             "BUKA PENGATURAN BLUETOOTH HP",
                             style: GoogleFonts.inter(
@@ -777,16 +801,16 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                     shrinkWrap: true,
                     physics: const BouncingScrollPhysics(),
                     itemCount: devices.length,
-                    separatorBuilder: (_, _) => const Divider(
-                      height: 1,
-                      color: Color(0xFFF3F4F6),
-                    ),
+                    separatorBuilder: (_, _) =>
+                        const Divider(height: 1, color: Color(0xFFF3F4F6)),
                     itemBuilder: (ctx, index) {
                       final device = devices[index];
-                      final name = (device.name != null && device.name!.isNotEmpty)
+                      final name =
+                          (device.name != null && device.name!.isNotEmpty)
                           ? device.name!
                           : "Unknown Printer";
-                      final isLikelyPrinter = name.toLowerCase().contains("rpp") ||
+                      final isLikelyPrinter =
+                          name.toLowerCase().contains("rpp") ||
                           name.toLowerCase().contains("printer") ||
                           name.toLowerCase().contains("pos") ||
                           name.toLowerCase().contains("eppos") ||
@@ -796,7 +820,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
 
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 6),
+                          horizontal: 4,
+                          vertical: 6,
+                        ),
                         leading: Container(
                           width: 44,
                           height: 44,
@@ -829,7 +855,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                             if (isLikelyPrinter)
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF16A34A),
                                   borderRadius: BorderRadius.circular(9999),
@@ -864,8 +892,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                               _connectingDeviceName = name;
                             });
                           }
-                          final success =
-                              await provider.printerService.connect(device);
+                          final success = await provider.printerService.connect(
+                            device,
+                          );
                           if (context.mounted) {
                             setState(() => _isConnecting = false);
                             if (success) {
@@ -879,7 +908,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                                   content: Text(
                                     "Berhasil terhubung ke $name!",
                                     style: GoogleFonts.inter(
-                                        color: Colors.white),
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               );
@@ -894,7 +924,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                                   content: Text(
                                     "Gagal terhubung ke $name. Pastikan printer menyala.",
                                     style: GoogleFonts.inter(
-                                        color: Colors.white),
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               );
@@ -930,21 +961,14 @@ class _CustomHeader extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Back Arrow Icon (Dark Green)
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    color: Color(0xFF16A34A),
-                    size: 24,
-                  ),
-                  onPressed: onBackTap,
+                Image.asset(
+                  "assets/images/logo.png",
+                  height: 26,
+                  fit: BoxFit.contain,
                 ),
-
-                // Monospace Title "PENGATURAN"
+                const Gap(8),
                 Text(
                   "PENGATURAN",
                   style: GoogleFonts.inter(
@@ -954,9 +978,6 @@ class _CustomHeader extends StatelessWidget {
                     letterSpacing: 2.0,
                   ),
                 ),
-
-                // Balance Spacer
-                const SizedBox(width: 24),
               ],
             ),
           ),
@@ -1009,11 +1030,7 @@ class CustomSettingsToggle extends StatelessWidget {
               shape: BoxShape.circle,
               color: Color(0xFF2563EB), // Vibrant blue thumb
             ),
-            child: const Icon(
-              Icons.check,
-              color: Colors.white,
-              size: 14,
-            ),
+            child: const Icon(Icons.check, color: Colors.white, size: 14),
           ),
         ),
       ),
@@ -1047,46 +1064,44 @@ class CustomSegmentedControl extends StatelessWidget {
         borderRadius: BorderRadius.circular(9999),
       ),
       child: Row(
-        children: List.generate(
-          options.length,
-          (index) {
-            final isSelected = selectedIndex == index;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => onSelected(index),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.white : Colors.transparent,
-                    borderRadius: BorderRadius.circular(9999),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Center(
-                    child: Text(
-                      options[index],
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected
-                            ? const Color(0xFF111827)
-                            : const Color(0xFF6B7280),
-                      ),
+        children: List.generate(options.length, (index) {
+          final isSelected = selectedIndex == index;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onSelected(index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(9999),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Center(
+                  child: Text(
+                    options[index],
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? const Color(0xFF111827)
+                          : const Color(0xFF6B7280),
                     ),
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        }),
       ),
     );
   }
