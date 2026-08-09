@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../providers/photobooth_provider.dart';
 
@@ -463,36 +464,118 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 ),
               ),
               const Gap(4),
-              Text(
-                devices.isEmpty
-                    ? "Tidak ada printer ditemukan"
-                    : "${devices.length} perangkat ditemukan",
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: const Color(0xFF9CA3AF),
+              const Gap(16),
+              // Banner Panduan Sandingkan (Pairing) RPP02N / Eppos
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7), // Light amber
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFFCD34D),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.lightbulb_outline_rounded,
+                      color: Color(0xFFD97706),
+                      size: 20,
+                    ),
+                    const Gap(10),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: const Color(0xFF92400E),
+                            height: 1.4,
+                          ),
+                          children: const [
+                            TextSpan(
+                              text: "Printer seperti RPP02N belum muncul?\n",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            TextSpan(
+                              text:
+                                  "1. Buka Pengaturan Bluetooth HP Anda.\n2. Sandingkan (Pair) ",
+                            ),
+                            TextSpan(
+                              text: "RPP02N",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            TextSpan(
+                              text: " (PIN: 0000 atau 1234).\n3. Kembali & tekan Pindai Ulang.",
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+
               const Gap(16),
+
               if (devices.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Center(
                     child: Column(
                       children: [
                         const Icon(
-                          Icons.bluetooth_disabled_rounded,
-                          size: 40,
-                          color: Color(0xFFD1D5DB),
+                          Icons.bluetooth_searching_rounded,
+                          size: 44,
+                          color: Color(0xFF9CA3AF),
                         ),
                         const Gap(12),
                         Text(
-                          "Pastikan Bluetooth HP & Printer\nEppos Anda sudah menyala dan\nsudah dipasangkan (paired).",
+                          "Belum ada printer Bluetooth terhubung",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF111827),
+                          ),
+                        ),
+                        const Gap(6),
+                        Text(
+                          "Sandingkan printer RPP02N di Menu Bluetooth HP,\nlalu tekan 'Pindai Ulang'.",
                           textAlign: TextAlign.center,
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             color: const Color(0xFF6B7280),
-                            height: 1.5,
+                            height: 1.4,
                           ),
+                        ),
+                        const Gap(16),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF16A34A),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(9999),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                          ),
+                          icon: const Icon(Icons.settings_bluetooth_rounded,
+                              size: 18),
+                          label: Text(
+                            "BUKA PENGATURAN BLUETOOTH HP",
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          onPressed: () {
+                            openAppSettings();
+                          },
                         ),
                       ],
                     ),
