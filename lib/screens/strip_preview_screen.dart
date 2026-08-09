@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:screenshot/screenshot.dart';
 import '../providers/photobooth_provider.dart';
 import '../services/cloud_storage_service.dart';
+import '../services/printer_audio_service.dart';
 import 'printer_settings_screen.dart';
 import 'success_screen.dart';
 
@@ -17,9 +18,52 @@ class StripPreviewScreen extends StatefulWidget {
   State<StripPreviewScreen> createState() => _StripPreviewScreenState();
 }
 
-class _StripPreviewScreenState extends State<StripPreviewScreen> {
+class _StripPreviewScreenState extends State<StripPreviewScreen>
+    with SingleTickerProviderStateMixin {
   final ScreenshotController _screenshotController = ScreenshotController();
+  
+  late final AnimationController _ejectionController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
+
+  late final Animation<Offset> _slideAnimation = Tween<Offset>(
+    begin: const Offset(0, -0.6), // Muncul dari dalam slot mesin
+    end: Offset.zero,
+  ).animate(
+    CurvedAnimation(
+      parent: _ejectionController,
+      curve: Curves.easeOutCubic,
+    ),
+  );
+
+  late final Animation<double> _fadeAnimation = Tween<double>(
+    begin: 0.1,
+    end: 1.0,
+  ).animate(
+    CurvedAnimation(
+      parent: _ejectionController,
+      curve: Curves.easeOut,
+    ),
+  );
+
   bool _isPrinting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Animasi strip keluar dari mesin + mainkan soundtrack/efek suara printer
+    _ejectionController.forward(from: 0.0);
+    PrinterAudioService.playPrinterSound();
+  }
+
+
+  @override
+  void dispose() {
+    _ejectionController.dispose();
+    PrinterAudioService.stop();
+    super.dispose();
+  }
 
   Future<void> _handlePrintProcess(PhotoboothProvider provider) async {
     if (_isPrinting) return;
@@ -60,6 +104,10 @@ class _StripPreviewScreenState extends State<StripPreviewScreen> {
     setState(() {
       _isPrinting = true;
     });
+
+    // Mainkan animasi & suara printer saat tombol cetak ditekan
+    _ejectionController.forward(from: 0.0);
+    PrinterAudioService.playPrinterSound();
 
     try {
       // 1. Capture high-res receipt paper strip (pixelRatio: 2.0 cukup & cepat)
@@ -165,16 +213,22 @@ class _StripPreviewScreenState extends State<StripPreviewScreen> {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Stack(
                     children: [
-                      // Bottom Layer: Scrollable Receipt Paper (Wrapped in Screenshot)
+                      // Bottom Layer: Scrollable Receipt Paper (Wrapped in Screenshot & Ejection Animation)
                       Positioned.fill(
                         child: SingleChildScrollView(
                           physics: const BouncingScrollPhysics(),
                           padding: const EdgeInsets.only(top: 24, bottom: 24),
                           child: Center(
-                            child: Screenshot(
-                              controller: _screenshotController,
-                              child: _ThermalReceiptPaper(
-                                photoUrls: photosToRender,
+                            child: SlideTransition(
+                              position: _slideAnimation,
+                              child: FadeTransition(
+                                opacity: _fadeAnimation,
+                                child: Screenshot(
+                                  controller: _screenshotController,
+                                  child: _ThermalReceiptPaper(
+                                    photoUrls: photosToRender,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -187,7 +241,9 @@ class _StripPreviewScreenState extends State<StripPreviewScreen> {
                         left: 0,
                         right: 0,
                         child: Center(
-                          child: _PrinterSlotMachinePart(),
+                          child: _PrinterSlotMachinePart(
+                            isPrinting: _isPrinting,
+                          ),
                         ),
                       ),
                     ],
@@ -348,11 +404,15 @@ class _CustomHeader extends StatelessWidget {
 // 2. SKEUOMORPHIC METALLIC PRINTER SLOT
 // ==========================================
 class _PrinterSlotMachinePart extends StatelessWidget {
+  final bool isPrinting;
+
+  const _PrinterSlotMachinePart({this.isPrinting = false});
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 290,
-      height: 38,
+      height: 40,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(9999), // Metallic pill frame
@@ -377,10 +437,11 @@ class _PrinterSlotMachinePart extends StatelessWidget {
         ],
       ),
       child: Center(
-        // Inner Dark Slit Hole
+        // Inner Dark Slit Hole with LED Indicator
         child: Container(
           width: 264,
-          height: 18,
+          height: 20,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
             color: const Color(0xFF18181B), // Dark slit
             borderRadius: BorderRadius.circular(9999),
@@ -394,6 +455,52 @@ class _PrinterSlotMachinePart extends StatelessWidget {
                 blurRadius: 4,
                 spreadRadius: -1,
                 offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Left Glowing Green Power LED
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isPrinting
+                      ? const Color(0xFF4ADE80)
+                      : const Color(0xFF16A34A),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF4ADE80).withValues(alpha: isPrinting ? 0.9 : 0.4),
+                      blurRadius: isPrinting ? 8 : 4,
+                      spreadRadius: isPrinting ? 2 : 0,
+                    ),
+                  ],
+                ),
+              ),
+              const Expanded(child: SizedBox()),
+              // Right Activity LED
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isPrinting
+                      ? const Color(0xFFFACC15)
+                      : const Color(0xFF52525B),
+                  boxShadow: isPrinting
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFFFACC15).withValues(alpha: 0.8),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
+                ),
               ),
             ],
           ),
