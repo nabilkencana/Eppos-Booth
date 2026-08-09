@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:screenshot/screenshot.dart';
 import '../providers/photobooth_provider.dart';
+import '../services/cloud_storage_service.dart';
 import 'printer_settings_screen.dart';
 import 'success_screen.dart';
 
@@ -86,18 +87,28 @@ class _StripPreviewScreenState extends State<StripPreviewScreen> {
       });
 
       if (success) {
-        // Simpan strip ke galeri HP dan riwayat cetak
+        // 1. Simpan strip ke galeri HP dan riwayat cetak
         await provider.saveStripToGalleryAndHistory(
           stripImageBytes: imageBytes,
         );
 
+        // 2. Upload ke Firebase Storage (Cloud) untuk mendapatkan Public Download URL
+        final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+        final downloadUrl = await CloudStorageService.uploadPhotoStrip(
+          imageBytes: imageBytes,
+          sessionId: sessionId,
+        );
+
         if (!mounted) return;
 
-        // Navigasi ke Success Screen jika BERHASIL dicetak
+        // 3. Navigasi ke Success Screen dengan URL unduh digital
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => const SuccessScreen(),
+            builder: (_) => SuccessScreen(
+              sessionId: sessionId,
+              downloadUrl: downloadUrl,
+            ),
           ),
         );
       } else {

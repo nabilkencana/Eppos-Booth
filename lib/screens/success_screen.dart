@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import 'home_screen.dart';
 
 class SuccessScreen extends StatefulWidget {
   final String? sessionId;
+  final String? downloadUrl;
 
   const SuccessScreen({
     super.key,
     this.sessionId,
+    this.downloadUrl,
   });
 
   @override
@@ -26,9 +29,39 @@ class _SuccessScreenState extends State<SuccessScreen> {
     _activeSessionId = widget.sessionId ?? const Uuid().v4();
   }
 
+  Future<void> _openDownloadUrl() async {
+    final targetUrl = widget.downloadUrl ?? "https://eppos.app/session/$_activeSessionId";
+    final uri = Uri.parse(targetUrl);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Membuka link: $targetUrl"),
+              backgroundColor: const Color(0xFF16A34A),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Link foto: $targetUrl"),
+            backgroundColor: const Color(0xFF16A34A),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    const scaffoldBgColor = Color(0xFFF2F5F0); // Faint warm/greenish off-white
+    const scaffoldBgColor = Color(0xFFF2F5F0);
+
+    final activeQrData = widget.downloadUrl ?? "https://eppos.app/session/$_activeSessionId";
 
     return Scaffold(
       backgroundColor: scaffoldBgColor,
@@ -86,9 +119,9 @@ class _SuccessScreenState extends State<SuccessScreen> {
 
                       const Gap(32),
 
-                      // QR Code Card with Real QR Code & Laser Scanner Line
+                      // QR Code Card
                       QRCard(
-                        qrData: "https://eppos.app/session/$_activeSessionId",
+                        qrData: activeQrData,
                       ),
 
                       const Gap(24),
@@ -97,42 +130,72 @@ class _SuccessScreenState extends State<SuccessScreen> {
                 ),
               ),
 
-              // 3. Bottom Action Area (Ghost Pill Button)
+              // 3. Bottom Action Buttons
               SafeArea(
                 top: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => const HomeScreen()),
-                        (route) => false,
-                      );
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.transparent, // Ghost button
-                        borderRadius: BorderRadius.circular(9999), // Pill shape
-                        border: Border.all(
-                          color: const Color(0xFF4B5563),
-                          width: 1.5,
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Tombol UNDUH FOTO DIGITAL (Utama)
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF16A34A),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 52),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(9999),
+                          ),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.download_rounded, size: 20),
+                        label: Text(
+                          "UNDUH FOTO DIGITAL",
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        onPressed: _openDownloadUrl,
+                      ),
+
+                      const Gap(12),
+
+                      // Tombol KEMBALI KE BERANDA (Secondary)
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (_) => const HomeScreen()),
+                            (route) => false,
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(9999),
+                            border: Border.all(
+                              color: const Color(0xFF9CA3AF),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            "SELESAI & KEMBALI KE BERANDA",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                              color: const Color(0xFF374151),
+                            ),
+                          ),
                         ),
                       ),
-                      child: Text(
-                        "SELESAI & KEMBALI KE\nBERANDA",
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.0,
-                          color: const Color(0xFF18181B),
-                          height: 1.3,
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
                 ),
               ),
