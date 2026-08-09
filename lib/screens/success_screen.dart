@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:uuid/uuid.dart';
 import 'home_screen.dart';
+
 
 class SuccessScreen extends StatefulWidget {
   final String? sessionId;
@@ -21,39 +22,28 @@ class SuccessScreen extends StatefulWidget {
 }
 
 class _SuccessScreenState extends State<SuccessScreen> {
-  late final String _activeSessionId;
-
-  @override
-  void initState() {
-    super.initState();
-    _activeSessionId = widget.sessionId ?? const Uuid().v4();
-  }
-
   Future<void> _openDownloadUrl() async {
-    final targetUrl = widget.downloadUrl ?? "https://eppos.app/session/$_activeSessionId";
+
+    final targetUrl = (widget.downloadUrl != null &&
+            widget.downloadUrl!.startsWith("http"))
+        ? widget.downloadUrl!
+        : "https://google.com";
+
     final uri = Uri.parse(targetUrl);
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Membuka link: $targetUrl"),
-              backgroundColor: const Color(0xFF16A34A),
-            ),
-          );
-        }
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched) {
+        await Share.share("Unduh Foto Digital EPPOS Photobooth: $targetUrl");
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Link foto: $targetUrl"),
-            backgroundColor: const Color(0xFF16A34A),
-          ),
-        );
-      }
+      debugPrint('[SuccessScreen] launchUrl error: $e');
+      try {
+        await Share.share("Unduh Foto Digital EPPOS Photobooth: $targetUrl");
+      } catch (_) {}
     }
   }
 
