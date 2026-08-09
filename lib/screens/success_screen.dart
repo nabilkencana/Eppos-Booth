@@ -227,15 +227,26 @@ class _CustomHeader extends StatelessWidget {
             // Left Empty Spacer for Center Balance
             const SizedBox(width: 24),
 
-            // Center Title "EPPOSBOOTH"
-            Text(
-              "EPPOSBOOTH",
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                color: const Color(0xFF111827),
-                letterSpacing: 2.0,
-              ),
+            // Center Logo + Title "EPPOSBOOTH"
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  "assets/images/logo.png",
+                  height: 28,
+                  fit: BoxFit.contain,
+                ),
+                const Gap(8),
+                Text(
+                  "EPPOSBOOTH",
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF111827),
+                    letterSpacing: 2.0,
+                  ),
+                ),
+              ],
             ),
 
             // Right Close Icon

@@ -292,7 +292,7 @@ class _CustomHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4), // Faint mint green background
+        color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -302,7 +302,7 @@ class _CustomHeader extends StatelessWidget {
         ],
         border: const Border(
           bottom: BorderSide(
-            color: Color(0xFFDCFCE7),
+            color: Color(0xFFE5E7EB),
             width: 1.0,
           ),
         ),
@@ -310,17 +310,26 @@ class _CustomHeader extends StatelessWidget {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Center(
-            child: Text(
-              "EPPOS BOOTH",
-              style: GoogleFonts.inter(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.8,
-                color: const Color(0xFF15803D), // Rich dark green
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                "assets/images/logo.png",
+                height: 34,
+                fit: BoxFit.contain,
               ),
-            ),
+              const Gap(10),
+              Text(
+                "EPPOS BOOTH",
+                style: GoogleFonts.inter(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.0,
+                  color: const Color(0xFF15803D), // Rich dark green
+                ),
+              ),
+            ],
           ),
         ),
       ),
