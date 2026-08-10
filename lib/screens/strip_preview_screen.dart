@@ -1,6 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -67,227 +65,12 @@ class _StripPreviewScreenState extends State<StripPreviewScreen>
     super.dispose();
   }
 
-  // ── Render nota cetak langsung via Canvas (bypass Flutter widget tree) ─────
-  // Menggunakan ui.PictureRecorder + canvas.drawImage setelah foto di-pre-decode
-  // agar gambar 100% tersedia saat bitmap PNG di-export untuk dikirim ke printer.
-  Future<Uint8List?> _buildReceiptBitmap(
-    List<String> photoPaths,
-    PhotoboothTemplate template,
-  ) async {
-    const double pageW = 384.0;
-    const double borderW = 6.0;
-    const double pad = 16.0;
-    const double innerW = pageW - (pad * 2);
-
-    // 1. Pre-decode semua foto ke ui.Image
-    final List<ui.Image?> decodedPhotos = [];
-    for (final path in photoPaths) {
-      try {
-        final Uint8List bytes = path.startsWith('http')
-            ? Uint8List(0) // network: skip pre-decode, gunakan placeholder
-            : File(path).readAsBytesSync();
-        if (bytes.isEmpty) {
-          decodedPhotos.add(null);
-          continue;
-        }
-        final codec = await ui.instantiateImageCodec(
-          bytes,
-          targetWidth: innerW.toInt(),
-        );
-        final frame = await codec.getNextFrame();
-        decodedPhotos.add(frame.image);
-      } catch (e) {
-        debugPrint('[ReceiptBitmap] decode error: $e');
-        decodedPhotos.add(null);
-      }
-    }
-
-    // 2. Hitung tinggi layout berdasarkan template
-    double photoSectionH;
-    switch (template) {
-      case PhotoboothTemplate.singleShot:
-        photoSectionH = innerW / 1.25; // landscape-ish
-        break;
-      case PhotoboothTemplate.classicStrip:
-        // 4 foto vertikal
-        final frameH = innerW / 1.35;
-        photoSectionH = (frameH + 12) * 4 - 12;
-        break;
-      case PhotoboothTemplate.squareGrid:
-        // 2x2 grid
-        final frameH = (innerW - 8) / 2;
-        photoSectionH = frameH * 2 + 8;
-        break;
-      case PhotoboothTemplate.bentoStyle:
-        // 1 atas + 2 bawah
-        final topH = innerW / 1.5;
-        final botH = (innerW - 8) / 2;
-        photoSectionH = topH + 8 + botH;
-        break;
-    }
-
-    // Tinggi total halaman
-    const double headerH = 120.0;
-    const double footerH = 80.0;
-    final double totalH = headerH + photoSectionH + footerH;
-
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, pageW, totalH));
-
-    final bgPaint = Paint()..color = const Color(0xFFFFFFFF);
-    final blackPaint = Paint()..color = const Color(0xFF000000);
-    final borderPaint = Paint()
-      ..color = const Color(0xFF18181B)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = borderW;
-
-    // Background putih
-    canvas.drawRect(Rect.fromLTWH(0, 0, pageW, totalH), bgPaint);
-
-    // === HEADER ===
-    double y = 0;
-    // Garis atas tebal
-    canvas.drawRect(Rect.fromLTWH(0, y, pageW, 6), blackPaint);
-    y += 14;
-
-    _canvasText(canvas, 'EPPOS PHOTOBOOTH', pageW, y,
-        fontSize: 24, bold: true, center: true);
-    y += 32;
-    _canvasText(canvas, 'Photobooth Experience', pageW, y,
-        fontSize: 13, center: true);
-    y += 22;
-
-    // Tanggal
-    final dateStr = DateFormat('dd/MM/yyyy  HH:mm').format(DateTime.now());
-    _canvasText(canvas, dateStr, pageW, y, fontSize: 12, center: true);
-    y += 18;
-
-    // Garis separator
-    canvas.drawRect(Rect.fromLTWH(pad, y, innerW, 2), blackPaint);
-    y += 10;
-
-    // === FOTO ===
-    void drawPhoto(ui.Image? photo, Rect destRect) {
-      if (photo != null) {
-        final srcRect = Rect.fromLTWH(
-            0, 0, photo.width.toDouble(), photo.height.toDouble());
-        canvas.drawImageRect(
-          photo,
-          srcRect,
-          destRect,
-          Paint()..filterQuality = FilterQuality.medium,
-        );
-      } else {
-        // Placeholder abu-abu jika foto tidak tersedia
-        canvas.drawRect(
-            destRect, Paint()..color = const Color(0xFFD1D5DB));
-        _canvasText(canvas, 'FOTO', destRect.left + destRect.width / 2,
-            destRect.top + destRect.height / 2 - 8,
-            fontSize: 14, center: false);
-      }
-      // Border bingkai foto
-      canvas.drawRect(destRect, borderPaint);
-    }
-
-    final p0 = decodedPhotos.isNotEmpty ? decodedPhotos[0] : null;
-    final p1 =
-        decodedPhotos.length > 1 ? decodedPhotos[1] : decodedPhotos.isNotEmpty ? decodedPhotos[0] : null;
-    final p2 =
-        decodedPhotos.length > 2 ? decodedPhotos[2] : decodedPhotos.isNotEmpty ? decodedPhotos[0] : null;
-    final p3 =
-        decodedPhotos.length > 3 ? decodedPhotos[3] : decodedPhotos.isNotEmpty ? decodedPhotos[0] : null;
-
-    switch (template) {
-      case PhotoboothTemplate.singleShot:
-        final h = innerW / 1.25;
-        drawPhoto(p0, Rect.fromLTWH(pad, y, innerW, h));
-        y += h;
-        break;
-
-      case PhotoboothTemplate.classicStrip:
-        final frameH = innerW / 1.35;
-        for (int i = 0; i < 4; i++) {
-          final ph = [p0, p1, p2, p3][i];
-          drawPhoto(ph, Rect.fromLTWH(pad, y, innerW, frameH));
-          y += frameH + 12;
-        }
-        y -= 12;
-        break;
-
-      case PhotoboothTemplate.squareGrid:
-        final cellW = (innerW - 8) / 2;
-        drawPhoto(p0, Rect.fromLTWH(pad, y, cellW, cellW));
-        drawPhoto(p1, Rect.fromLTWH(pad + cellW + 8, y, cellW, cellW));
-        y += cellW + 8;
-        drawPhoto(p2, Rect.fromLTWH(pad, y, cellW, cellW));
-        drawPhoto(p3, Rect.fromLTWH(pad + cellW + 8, y, cellW, cellW));
-        y += cellW;
-        break;
-
-      case PhotoboothTemplate.bentoStyle:
-        final topH = innerW / 1.5;
-        drawPhoto(p0, Rect.fromLTWH(pad, y, innerW, topH));
-        y += topH + 8;
-        final botW = (innerW - 8) / 2;
-        final botH = botW;
-        drawPhoto(p1, Rect.fromLTWH(pad, y, botW, botH));
-        drawPhoto(p2, Rect.fromLTWH(pad + botW + 8, y, botW, botH));
-        y += botH;
-        break;
-    }
-
-    y += 12;
-    // Garis separator bawah
-    canvas.drawRect(Rect.fromLTWH(pad, y, innerW, 2), blackPaint);
-    y += 12;
-
-    // === FOOTER ===
-    _canvasText(canvas, 'Thank you for playing!', pageW, y,
-        fontSize: 13, center: true);
-    y += 22;
-    _canvasText(canvas, 'www.eppos.id', pageW, y, fontSize: 12, center: true);
-    y += 28;
-    // Garis bawah tebal
-    canvas.drawRect(Rect.fromLTWH(0, y, pageW, 6), blackPaint);
-
-    // 3. Export ke PNG
-    final picture = recorder.endRecording();
-    final uiImage = await picture.toImage(pageW.toInt(), totalH.toInt());
-    final byteData =
-        await uiImage.toByteData(format: ui.ImageByteFormat.png);
-    return byteData?.buffer.asUint8List();
-  }
-
-  void _canvasText(
-    Canvas canvas,
-    String text,
-    double x,
-    double y, {
-    double fontSize = 14,
-    bool bold = false,
-    bool center = false,
-  }) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-          color: const Color(0xFF000000),
-        ),
-      ),
-      textDirection: ui.TextDirection.ltr,
-    );
-    tp.layout(maxWidth: 384 - 32);
-    final dx = center ? (x - tp.width) / 2 : 16.0;
-    tp.paint(canvas, Offset(dx, y));
-  }
-
   Future<void> _handlePrintProcess(PhotoboothProvider provider) async {
     if (_isPrinting) return;
 
     final printerService = provider.printerService;
 
+    // GUARD: Matikan simulasi — wajib terhubung ke printer Bluetooth
     if (!printerService.isConnected) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -318,38 +101,46 @@ class _StripPreviewScreenState extends State<StripPreviewScreen>
       return;
     }
 
-    setState(() => _isPrinting = true);
+    setState(() {
+      _isPrinting = true;
+    });
+
+    // Mainkan animasi & suara printer saat tombol cetak ditekan
     _ejectionController.forward(from: 0.0);
     PrinterAudioService.playPrinterSound();
 
     try {
-      // Render nota langsung via Canvas — foto sudah di-pre-decode sebelum export
-      final imageBytes = await _buildReceiptBitmap(
-        provider.capturedPhotos,
-        provider.selectedTemplate,
+      // 1. Capture high-res receipt paper strip (pixelRatio: 2.0 cukup & cepat)
+      final imageBytes = await _screenshotController.capture(
+        pixelRatio: 2.0,
       );
 
-      if (imageBytes == null || imageBytes.isEmpty) {
+      if (imageBytes == null) {
         if (mounted) {
           setState(() => _isPrinting = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Gagal render gambar nota cetak.")),
+            const SnackBar(content: Text("Gagal mengambil preview foto.")),
           );
         }
         return;
       }
 
-      // Kirim ke printer thermal
+      // 2. Real Bluetooth thermal print ke Eppos printer
       final success = await printerService.printReceiptImage(imageBytes);
 
       if (!mounted) return;
-      setState(() => _isPrinting = false);
+
+      setState(() {
+        _isPrinting = false;
+      });
 
       if (success) {
+        // 1. Simpan strip ke galeri HP dan riwayat cetak
         await provider.saveStripToGalleryAndHistory(
           stripImageBytes: imageBytes,
         );
 
+        // 2. Upload ke Firebase Storage (Cloud) untuk mendapatkan Public Download URL
         final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
         final downloadUrl = await CloudStorageService.uploadPhotoStrip(
           imageBytes: imageBytes,
@@ -358,6 +149,7 @@ class _StripPreviewScreenState extends State<StripPreviewScreen>
 
         if (!mounted) return;
 
+        // 3. Navigasi ke Success Screen dengan URL unduh digital
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -368,6 +160,7 @@ class _StripPreviewScreenState extends State<StripPreviewScreen>
           ),
         );
       } else {
+        // Tampilkan pesan error dan tetap di preview screen
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
@@ -383,7 +176,9 @@ class _StripPreviewScreenState extends State<StripPreviewScreen>
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isPrinting = false);
+        setState(() {
+          _isPrinting = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("Terjadi kesalahan saat mencetak: $e"),
@@ -867,14 +662,10 @@ class _ThermalReceiptPaper extends StatelessWidget {
         );
 
       case PhotoboothTemplate.singleShot:
-        // Layout Single Shot: 1 foto tunggal berukuran besar & jernih
+        // Layout Single Shot: 1 foto tunggal berukuran besar
         return Column(
           children: [
-            _buildSinglePhotoFrame(
-              urls.isNotEmpty ? urls[0] : "",
-              aspectRatio: 1.25,
-              isLast: true,
-            ),
+            _buildSinglePhotoFrame(urls[0 % urls.length], aspectRatio: 1.35, isLast: true),
           ],
         );
 
@@ -899,21 +690,7 @@ class _ThermalReceiptPaper extends StatelessWidget {
   }
 
   Widget _buildSinglePhotoFrame(String path, {double aspectRatio = 1.35, bool isLast = false}) {
-    if (path.isEmpty) return _buildErrorPlaceholder();
-
     final isUrl = path.startsWith("http");
-    Uint8List? rawBytes;
-
-    if (!isUrl) {
-      final file = File(path);
-      if (file.existsSync()) {
-        try {
-          rawBytes = file.readAsBytesSync();
-        } catch (e) {
-          debugPrint('[SinglePhotoFrame] readAsBytesSync error: $e');
-        }
-      }
-    }
 
     return Container(
       decoration: BoxDecoration(
@@ -927,23 +704,21 @@ class _ThermalReceiptPaper extends StatelessWidget {
         children: [
           AspectRatio(
             aspectRatio: aspectRatio,
-            child: (rawBytes != null && rawBytes.isNotEmpty)
-                ? Image.memory(
-                    rawBytes,
+            child: isUrl
+                ? Image.network(
+                    path,
                     fit: BoxFit.cover,
+                    color: Colors.grey,
+                    colorBlendMode: BlendMode.saturation,
                     errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
                   )
-                : (isUrl
-                    ? Image.network(
-                        path,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
-                      )
-                    : Image.file(
-                        File(path),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
-                      )),
+                : Image.file(
+                    File(path),
+                    fit: BoxFit.cover,
+                    color: Colors.grey,
+                    colorBlendMode: BlendMode.saturation,
+                    errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
+                  ),
           ),
           if (isLast)
             Container(
