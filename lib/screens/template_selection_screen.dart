@@ -9,11 +9,13 @@ class TemplateItemData {
   final String title;
   final String description;
   final Widget wireframe;
+  final PhotoboothTemplate template;
 
   const TemplateItemData({
     required this.title,
     required this.description,
     required this.wireframe,
+    required this.template,
   });
 }
 
@@ -37,21 +39,25 @@ class _TemplateSelectionScreenState extends State<TemplateSelectionScreen> {
         title: "Single Shot",
         description: "1 foto tunggal. Fokus & berukuran besar.",
         wireframe: _buildSingleShotWireframe(),
+        template: PhotoboothTemplate.singleShot,
       ),
       TemplateItemData(
         title: "Classic Strip",
         description: "4 foto berderet. Format photobooth klasik.",
         wireframe: _buildStripWireframe(),
+        template: PhotoboothTemplate.classicStrip,
       ),
       TemplateItemData(
         title: "Square Grid",
         description: "4 foto kotak. Cocok untuk kolase.",
         wireframe: _buildGridWireframe(),
+        template: PhotoboothTemplate.squareGrid,
       ),
       TemplateItemData(
         title: "Bento Style",
         description: "3 foto asimetris. Modern & dinamis.",
         wireframe: _buildBentoWireframe(),
+        template: PhotoboothTemplate.bentoStyle,
       ),
     ];
 
@@ -127,7 +133,7 @@ class _TemplateSelectionScreenState extends State<TemplateSelectionScreen> {
                         return _NextButton(
                           label: "LANJUT KE KAMERA",
                           onPressed: () {
-                            final selectedEnum = PhotoboothTemplate.values[_selectedIndex];
+                            final selectedEnum = templates[_selectedIndex].template;
                             provider.setSelectedTemplate(selectedEnum);
                             Navigator.push(
                               context,
