@@ -155,10 +155,10 @@ class PrinterService {
         final services = await bleDev.discoverServices();
         ios_ble.BluetoothCharacteristic? targetChar;
 
-        // Cari karakteristik GATT untuk write data (prioritaskan writeWithoutResponse)
+        // Cari karakteristik GATT — prioritaskan write WITH response (ACK) untuk reliabilitas iOS
         for (final service in services) {
           for (final char in service.characteristics) {
-            if (char.properties.writeWithoutResponse) {
+            if (char.properties.write) {
               targetChar = char;
               break;
             }
@@ -166,11 +166,11 @@ class PrinterService {
           if (targetChar != null) break;
         }
 
-        // Fallback: pakai yang write biasa
+        // Fallback: gunakan writeWithoutResponse jika tidak ada yang mendukung write biasa
         if (targetChar == null) {
           for (final service in services) {
             for (final char in service.characteristics) {
-              if (char.properties.write) {
+              if (char.properties.writeWithoutResponse) {
                 targetChar = char;
                 break;
               }
@@ -184,6 +184,11 @@ class PrinterService {
           _bleWriteCharacteristic = targetChar;
           _selectedDevice = device;
           _status = PrinterConnectionStatus.connected;
+          debugPrint(
+            '[BLE] Connected. Char: ${targetChar.uuid} '
+            'write=${targetChar.properties.write} '
+            'writeNoResp=${targetChar.properties.writeWithoutResponse}'
+          );
           return true;
         } else {
           await bleDev.disconnect();
@@ -215,28 +220,32 @@ class PrinterService {
     _status = PrinterConnectionStatus.disconnected;
   }
 
-  /// Kirim blok bytes ke BLE printer dalam chunk-chunk kecil
+  /// Kirim blok bytes ke BLE printer (iOS) — write WITH ACK (withoutResponse: false)
+  /// untuk mencegah silent packet drop di iOS CoreBluetooth.
+  /// Chunk 20 bytes adalah ukuran paling aman (BLE 4.0 guaranteed payload).
   Future<void> _bleSend(Uint8List data) async {
     if (_bleWriteCharacteristic == null) return;
 
-    final mtu = _bleConnectedDevice?.mtuNow ?? 23;
-    // Ukuran chunk aman: MTU - 3 (overhead BLE ATT header), minimal 20 bytes
-    final chunkSize = (mtu > 4) ? (mtu - 3).clamp(20, 128) : 20;
-    final supportsWithoutResponse =
-        _bleWriteCharacteristic!.properties.writeWithoutResponse;
+    // Selalu gunakan chunk 20 byte — paling kompatibel di semua versi iOS & BLE firmware printer
+    const chunkSize = 20;
+
+    // Prioritaskan write WITH response (ACK) agar tiap chunk dikonfirmasi printer.
+    // writeWithoutResponse: true adalah fire-and-forget — bisa silently drop packet!
+    final useAck = _bleWriteCharacteristic!.properties.write;
 
     for (int i = 0; i < data.length; i += chunkSize) {
       final end =
           (i + chunkSize < data.length) ? i + chunkSize : data.length;
       final chunk = data.sublist(i, end);
 
-      if (supportsWithoutResponse) {
-        await _bleWriteCharacteristic!.write(chunk, withoutResponse: true);
-        // Jeda antar chunk — beri iOS CoreBluetooth waktu memproses ACK queue
-        await Future.delayed(const Duration(milliseconds: 20));
-      } else {
-        // Write with response: tunggu ACK sebelum kirim chunk berikutnya
+      if (useAck) {
+        // Write WITH response: iOS CoreBluetooth menunggu ATT Write Response
+        // sebelum melanjutkan — 100% reliable, tidak ada packet drop
         await _bleWriteCharacteristic!.write(chunk, withoutResponse: false);
+      } else {
+        // Fallback: write without response dengan jeda konservatif
+        await _bleWriteCharacteristic!.write(chunk, withoutResponse: true);
+        await Future.delayed(const Duration(milliseconds: 30));
       }
     }
   }
@@ -268,14 +277,14 @@ class PrinterService {
         await _androidBt.writeBytes(all.toBytes());
       } else {
         // iOS BLE: kirim setiap pita satu per satu dengan jeda antar pita
-        // Ini mencegah overflow buffer RAM printer RPP02N / Rongta
+        // Mencegah overflow buffer RAM printer RPP02N / Rongta / Eppos
         for (int bandIdx = 0; bandIdx < bands.length; bandIdx++) {
           await _bleSend(bands[bandIdx]);
 
-          // Jeda antar pita: beri waktu printer memproses & mencetak pita sebelumnya
-          // sebelum pita berikutnya dikirim
+          // 200ms antar pita — cukup waktu bagi printer untuk proses & cetak pita sebelumnya
+          // sebelum data pita berikutnya masuk ke buffer.
           if (bandIdx < bands.length - 1) {
-            await Future.delayed(const Duration(milliseconds: 80));
+            await Future.delayed(const Duration(milliseconds: 200));
           }
         }
       }
