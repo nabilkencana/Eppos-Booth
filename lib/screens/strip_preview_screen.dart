@@ -662,10 +662,14 @@ class _ThermalReceiptPaper extends StatelessWidget {
         );
 
       case PhotoboothTemplate.singleShot:
-        // Layout Single Shot: 1 foto tunggal berukuran besar
+        // Layout Single Shot: 1 foto tunggal berukuran besar & jernih
         return Column(
           children: [
-            _buildSinglePhotoFrame(urls[0 % urls.length], aspectRatio: 1.35, isLast: true),
+            _buildSinglePhotoFrame(
+              urls.isNotEmpty ? urls[0] : "",
+              aspectRatio: 1.25,
+              isLast: true,
+            ),
           ],
         );
 
@@ -708,15 +712,11 @@ class _ThermalReceiptPaper extends StatelessWidget {
                 ? Image.network(
                     path,
                     fit: BoxFit.cover,
-                    color: Colors.grey,
-                    colorBlendMode: BlendMode.saturation,
                     errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
                   )
                 : Image.file(
                     File(path),
                     fit: BoxFit.cover,
-                    color: Colors.grey,
-                    colorBlendMode: BlendMode.saturation,
                     errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
                   ),
           ),
