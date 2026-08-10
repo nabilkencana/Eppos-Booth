@@ -34,6 +34,11 @@ class _TemplateSelectionScreenState extends State<TemplateSelectionScreen> {
 
     final templates = [
       TemplateItemData(
+        title: "Single Shot",
+        description: "1 foto tunggal. Fokus & berukuran besar.",
+        wireframe: _buildSingleShotWireframe(),
+      ),
+      TemplateItemData(
         title: "Classic Strip",
         description: "4 foto berderet. Format photobooth klasik.",
         wireframe: _buildStripWireframe(),
@@ -47,11 +52,6 @@ class _TemplateSelectionScreenState extends State<TemplateSelectionScreen> {
         title: "Bento Style",
         description: "3 foto asimetris. Modern & dinamis.",
         wireframe: _buildBentoWireframe(),
-      ),
-      TemplateItemData(
-        title: "Single Shot",
-        description: "1 foto tunggal. Fokus & berukuran besar.",
-        wireframe: _buildSingleShotWireframe(),
       ),
     ];
 
