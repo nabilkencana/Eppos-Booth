@@ -661,8 +661,17 @@ class _ThermalReceiptPaper extends StatelessWidget {
           ],
         );
 
+      case PhotoboothTemplate.singleShot:
+        // Layout Single Shot: 1 foto tunggal berukuran besar
+        return Column(
+          children: [
+            _buildSinglePhotoFrame(urls[0 % urls.length], aspectRatio: 1.35, isLast: true),
+          ],
+        );
+
       case PhotoboothTemplate.classicStrip:
         // Layout Klasik 4 foto vertical strip
+
 
         return Column(
           children: List.generate(

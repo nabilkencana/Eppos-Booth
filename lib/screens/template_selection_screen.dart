@@ -48,6 +48,11 @@ class _TemplateSelectionScreenState extends State<TemplateSelectionScreen> {
         description: "3 foto asimetris. Modern & dinamis.",
         wireframe: _buildBentoWireframe(),
       ),
+      TemplateItemData(
+        title: "Single Shot",
+        description: "1 foto tunggal. Fokus & berukuran besar.",
+        wireframe: _buildSingleShotWireframe(),
+      ),
     ];
 
     return Scaffold(
@@ -297,6 +302,34 @@ class _TemplateSelectionScreenState extends State<TemplateSelectionScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  static Widget _buildSingleShotWireframe() {
+    return Container(
+      width: 56,
+      height: 76,
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1.2),
+      ),
+      child: Center(
+        child: Container(
+          width: double.infinity,
+          height: 48,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE5E7EB),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: const Icon(
+            Icons.camera_alt_outlined,
+            color: Color(0xFF9CA3AF),
+            size: 18,
+          ),
+        ),
       ),
     );
   }

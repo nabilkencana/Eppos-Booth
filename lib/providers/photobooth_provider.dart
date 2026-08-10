@@ -12,7 +12,8 @@ import '../services/printer_service.dart';
 enum PhotoboothTemplate {
   classicStrip("Classic Strip", "4 foto berderet. Format photobooth klasik.", 4),
   squareGrid("Square Grid", "4 foto kotak. Cocok untuk kolase.", 4),
-  bentoStyle("Bento Style", "3 foto asimetris. Modern & dinamis.", 3);
+  bentoStyle("Bento Style", "3 foto asimetris. Modern & dinamis.", 3),
+  singleShot("Single Shot", "1 foto tunggal. Fokus & berukuran besar.", 1);
 
   final String title;
   final String description;
