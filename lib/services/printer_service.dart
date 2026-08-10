@@ -318,12 +318,14 @@ Uint8List _computeEscPos(_EscPosInput input) {
   return out.toBytes();
 }
 
-// ── iOS BLE: encode gambar ke List pita ESC/POS 48px ────────────────────────
-// Mengirim pita kecil satu per satu mencegah overflow buffer RAM printer RPP02N.
+// ── iOS BLE: encode gambar ke List pita ESC/POS 48px dengan Atkinson Dithering ─
+// Atkinson dithering = algoritma yang digunakan RTPrinter & app thermal printer
+// profesional. Menghasilkan teks tajam, gradasi foto halus, dan kontras tinggi.
 List<Uint8List> _buildIosBands(_EscPosInput input) {
   final decoded = img.decodeImage(input.bytes);
   if (decoded == null) return [];
 
+  // Resize ke lebar printer, pertahankan aspek rasio
   final resized = img.copyResize(
     decoded,
     width: input.printerWidth,
@@ -331,9 +333,52 @@ List<Uint8List> _buildIosBands(_EscPosInput input) {
     interpolation: img.Interpolation.average,
   );
 
+  // Konversi ke grayscale
   final gray = img.grayscale(resized);
   final w = gray.width;
   final totalH = gray.height;
+
+  // ── Tingkatkan kontras sebelum dithering ──────────────────────────────────
+  // Stretch histogram: pixel < 50 → 0, pixel > 200 → 255, sisanya di-scale
+  // Ini memastikan teks hitam benar-benar 0 dan background putih benar-benar 255
+  final lumBuf = List<double>.generate(w * totalH, (i) {
+    final x = i % w;
+    final y = i ~/ w;
+    final raw = gray.getPixel(x, y).r.toDouble();
+    // Contrast stretch linear
+    if (raw <= 50) return 0.0;
+    if (raw >= 200) return 255.0;
+    return ((raw - 50) / (200 - 50) * 255).clamp(0.0, 255.0);
+  });
+
+  // ── Atkinson Dithering ────────────────────────────────────────────────────
+  // Mendistribusikan 6/8 dari quantization error ke 6 tetangga.
+  // Lebih baik dari Floyd-Steinberg untuk thermal printer karena
+  // menghasilkan area putih lebih bersih (kertas terlihat lebih segar).
+  final binary = List<bool>.filled(w * totalH, false); // true = cetak titik hitam
+
+  for (int y = 0; y < totalH; y++) {
+    for (int x = 0; x < w; x++) {
+      final idx = y * w + x;
+      final oldVal = lumBuf[idx].clamp(0.0, 255.0);
+      final newVal = oldVal < 128.0 ? 0.0 : 255.0;
+      binary[idx] = newVal == 0.0;
+
+      final err = (oldVal - newVal) / 8.0; // Atkinson mendistribusikan 6/8 error
+
+      // Distribusi error ke 6 tetangga Atkinson
+      if (x + 1 < w)             lumBuf[idx + 1]           = (lumBuf[idx + 1] + err).clamp(0.0, 255.0);
+      if (x + 2 < w)             lumBuf[idx + 2]           = (lumBuf[idx + 2] + err).clamp(0.0, 255.0);
+      if (y + 1 < totalH) {
+        if (x - 1 >= 0)         lumBuf[(y+1)*w + x - 1]   = (lumBuf[(y+1)*w + x - 1] + err).clamp(0.0, 255.0);
+                                 lumBuf[(y+1)*w + x]        = (lumBuf[(y+1)*w + x] + err).clamp(0.0, 255.0);
+        if (x + 1 < w)          lumBuf[(y+1)*w + x + 1]   = (lumBuf[(y+1)*w + x + 1] + err).clamp(0.0, 255.0);
+      }
+      if (y + 2 < totalH)       lumBuf[(y+2)*w + x]        = (lumBuf[(y+2)*w + x] + err).clamp(0.0, 255.0);
+    }
+  }
+
+  // ── Bangun pita-pita ESC/POS dari hasil dithering ────────────────────────
   final bytesPerRow = (w + 7) ~/ 8;
   final xL = bytesPerRow & 0xFF;
   final xH = (bytesPerRow >> 8) & 0xFF;
@@ -343,24 +388,20 @@ List<Uint8List> _buildIosBands(_EscPosInput input) {
   // Pita pertama: inisialisasi printer
   final initBuilder = BytesBuilder();
   initBuilder.add([0x1B, 0x40]); // ESC @ — reset
-  initBuilder.add([0x1B, 0x33, 0x00]); // ESC 3 0 — line spacing 0
+  initBuilder.add([0x1B, 0x33, 0x00]); // ESC 3 0 — no line gap
   initBuilder.add([0x1B, 0x61, 0x01]); // ESC a 1 — center align
   result.add(initBuilder.toBytes());
 
-  // Pita gambar 48px — aman untuk RAM printer portable
+  // Pita gambar 48px — aman untuk RAM buffer printer portable RPP02N/Rongta
   const int bandH = 48;
 
   for (int startY = 0; startY < totalH; startY += bandH) {
-    final currentH =
-        (startY + bandH <= totalH) ? bandH : (totalH - startY);
-
+    final currentH = (startY + bandH <= totalH) ? bandH : (totalH - startY);
     final pixelRows = Uint8List(bytesPerRow * currentH);
 
     for (int y = 0; y < currentH; y++) {
       for (int x = 0; x < w; x++) {
-        final pixel = gray.getPixel(x, startY + y);
-        final lum = pixel.r.toInt();
-        if (lum < 128) {
+        if (binary[(startY + y) * w + x]) {
           pixelRows[y * bytesPerRow + (x ~/ 8)] |= (0x80 >> (x % 8));
         }
       }
@@ -382,3 +423,4 @@ List<Uint8List> _buildIosBands(_EscPosInput input) {
 
   return result;
 }
+
