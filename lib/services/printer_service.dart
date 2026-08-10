@@ -76,7 +76,7 @@ class PrinterService {
             .toList();
         return _devices;
       } else if (Platform.isIOS) {
-        // iOS BLE Scanning via FlutterBluePlus (dukungan printer Rongta / RPP02N / RTPrinter / Eppos)
+        // iOS BLE Scanning via FlutterBluePlus
         final results = <AppPrinterDevice>[];
 
         if (!ios_ble.FlutterBluePlus.isScanningNow) {
@@ -145,6 +145,11 @@ class PrinterService {
         // iOS BLE Connection & GATT Characteristic Discovery
         final bleDev = device.nativeDevice as ios_ble.BluetoothDevice;
         await bleDev.connect(timeout: const Duration(seconds: 8));
+
+        // Minta MTU maksimum untuk kecepatan & stabilitas pengiriman data
+        try {
+          await bleDev.requestMtu(247);
+        } catch (_) {}
 
         final services = await bleDev.discoverServices();
         ios_ble.BluetoothCharacteristic? targetChar;
@@ -217,16 +222,28 @@ class PrinterService {
           !_selectedDevice!.isBle) {
         await _androidBt.writeBytes(escPosBytes);
       } else if (_bleWriteCharacteristic != null) {
-        // Chunked BLE transmission (100 bytes/chunk) for iOS
-        const chunkSize = 100;
+        // Transmisi BLE flow-controlled untuk iOS (RPP02N / Rongta / Eppos)
+        final mtu = _bleConnectedDevice?.mtuNow ?? 23;
+        final chunkSize = (mtu > 3) ? (mtu - 3).clamp(20, 100) : 20;
+
+        final supportsWithoutResponse =
+            _bleWriteCharacteristic!.properties.writeWithoutResponse;
+
         for (int i = 0; i < escPosBytes.length; i += chunkSize) {
           final end = (i + chunkSize < escPosBytes.length)
               ? i + chunkSize
               : escPosBytes.length;
           final chunk = escPosBytes.sublist(i, end);
-          await _bleWriteCharacteristic!
-              .write(chunk, withoutResponse: true);
-          await Future.delayed(const Duration(milliseconds: 20));
+
+          if (supportsWithoutResponse) {
+            await _bleWriteCharacteristic!
+                .write(chunk, withoutResponse: true);
+            // Jeda 15ms agar buffer hardware iOS CoreBluetooth tidak membuang paket bitmap foto
+            await Future.delayed(const Duration(milliseconds: 15));
+          } else {
+            await _bleWriteCharacteristic!
+                .write(chunk, withoutResponse: false);
+          }
         }
       }
 
@@ -246,6 +263,7 @@ class _EscPosInput {
   const _EscPosInput(this.bytes, this.printerWidth);
 }
 
+// ── Konversi Gambar → ESC/POS Sliced Bands (RAM hardware printer safety) ────
 Uint8List _computeEscPos(_EscPosInput input) {
   final decoded = img.decodeImage(input.bytes);
   if (decoded == null) return Uint8List(0);
@@ -259,37 +277,53 @@ Uint8List _computeEscPos(_EscPosInput input) {
 
   final gray = img.grayscale(resized);
   final w = gray.width;
-  final h = gray.height;
+  final totalH = gray.height;
 
   final bytesPerRow = (w + 7) ~/ 8;
-  final pixelRows = Uint8List(bytesPerRow * h);
+  final xL = bytesPerRow & 0xFF;
+  final xH = (bytesPerRow >> 8) & 0xFF;
 
-  for (int y = 0; y < h; y++) {
-    for (int x = 0; x < w; x++) {
-      final pixel = gray.getPixel(x, y);
-      final alpha = pixel.a.toInt();
-      if (alpha > 128) {
-        final lum = pixel.r.toInt();
-        if (lum < 160) {
-          final byteIdx = y * bytesPerRow + (x ~/ 8);
-          pixelRows[byteIdx] |= (0x80 >> (x % 8));
+  final out = BytesBuilder();
+
+  // ESC @ (Inisialisasi printer)
+  out.add([0x1B, 0x40]);
+  // ESC 3 0 (Line spacing 0)
+  out.add([0x1B, 0x33, 0x00]);
+  // ESC a 1 (Center alignment)
+  out.add([0x1B, 0x61, 0x01]);
+
+  // Slicing bitmap dalam pita 96px agar tidak melebihi buffer RAM printer RPP02N/Rongta
+  const int maxSliceHeight = 96;
+
+  for (int startY = 0; startY < totalH; startY += maxSliceHeight) {
+    final currentSliceH = (startY + maxSliceHeight <= totalH)
+        ? maxSliceHeight
+        : (totalH - startY);
+
+    final pixelRows = Uint8List(bytesPerRow * currentSliceH);
+
+    for (int y = 0; y < currentSliceH; y++) {
+      final actualY = startY + y;
+      for (int x = 0; x < w; x++) {
+        final pixel = gray.getPixel(x, actualY);
+        final alpha = pixel.a.toInt();
+        if (alpha > 128) {
+          final lum = pixel.r.toInt();
+          if (lum < 160) {
+            final byteIdx = y * bytesPerRow + (x ~/ 8);
+            pixelRows[byteIdx] |= (0x80 >> (x % 8));
+          }
         }
       }
     }
+
+    final yL = currentSliceH & 0xFF;
+    final yH = (currentSliceH >> 8) & 0xFF;
+    out.add([0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+    out.add(pixelRows);
   }
 
-  final out = BytesBuilder();
-  out.add([0x1B, 0x40]); // ESC @
-  out.add([0x1B, 0x33, 0x00]); // ESC 3 0
-  out.add([0x1B, 0x61, 0x01]); // ESC a 1
-
-  final xL = bytesPerRow & 0xFF;
-  final xH = (bytesPerRow >> 8) & 0xFF;
-  final yL = h & 0xFF;
-  final yH = (h >> 8) & 0xFF;
-  out.add([0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
-  out.add(pixelRows);
-
+  // Feed 4 baris + Cut
   out.add([0x0A, 0x0A, 0x0A, 0x0A]);
   out.add([0x1D, 0x56, 0x01]);
 
