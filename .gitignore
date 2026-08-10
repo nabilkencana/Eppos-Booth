@@ -48,3 +48,10 @@ app.*.map.json
 **/google-services.json
 **/GoogleService-Info.plist
 *.env
+
+# iOS CocoaPods (contains auto-generated Xcode identifiers falsely flagged as secrets)
+ios/Pods/
+ios/.symlinks/
+
+# Scanner 
+secret_scanner.py
