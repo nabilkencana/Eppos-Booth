@@ -806,17 +806,14 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                     itemBuilder: (ctx, index) {
                       final device = devices[index];
                       final name =
-                          (device.name != null && device.name!.isNotEmpty)
-                          ? device.name!
-                          : "Unknown Printer";
+                          device.name.isNotEmpty ? device.name : "Unknown Printer";
                       final isLikelyPrinter =
                           name.toLowerCase().contains("rpp") ||
                           name.toLowerCase().contains("printer") ||
                           name.toLowerCase().contains("pos") ||
                           name.toLowerCase().contains("eppos") ||
                           name.toLowerCase().contains("bt") ||
-                          (device.address != null &&
-                              device.address!.startsWith("00:18"));
+                          device.address.startsWith("00:18");
 
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(
@@ -874,7 +871,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                           ],
                         ),
                         subtitle: Text(
-                          device.address ?? "",
+                          device.address,
                           style: GoogleFonts.jetBrainsMono(
                             fontSize: 11,
                             color: const Color(0xFF71717A),
