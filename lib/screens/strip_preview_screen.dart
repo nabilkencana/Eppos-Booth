@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -110,9 +111,10 @@ class _StripPreviewScreenState extends State<StripPreviewScreen>
     PrinterAudioService.playPrinterSound();
 
     try {
-      // 1. Capture high-res receipt paper strip (pixelRatio: 2.0 cukup & cepat)
+      // 1. Capture high-res receipt paper strip (dengan delay 400ms agar seluruh texture foto ter-render di memory)
       final imageBytes = await _screenshotController.capture(
         pixelRatio: 2.0,
+        delay: const Duration(milliseconds: 400),
       );
 
       if (imageBytes == null) {
@@ -694,7 +696,21 @@ class _ThermalReceiptPaper extends StatelessWidget {
   }
 
   Widget _buildSinglePhotoFrame(String path, {double aspectRatio = 1.35, bool isLast = false}) {
+    if (path.isEmpty) return _buildErrorPlaceholder();
+
     final isUrl = path.startsWith("http");
+    Uint8List? rawBytes;
+
+    if (!isUrl) {
+      final file = File(path);
+      if (file.existsSync()) {
+        try {
+          rawBytes = file.readAsBytesSync();
+        } catch (e) {
+          debugPrint('[SinglePhotoFrame] readAsBytesSync error: $e');
+        }
+      }
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -708,17 +724,23 @@ class _ThermalReceiptPaper extends StatelessWidget {
         children: [
           AspectRatio(
             aspectRatio: aspectRatio,
-            child: isUrl
-                ? Image.network(
-                    path,
+            child: (rawBytes != null && rawBytes.isNotEmpty)
+                ? Image.memory(
+                    rawBytes,
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
                   )
-                : Image.file(
-                    File(path),
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
-                  ),
+                : (isUrl
+                    ? Image.network(
+                        path,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
+                      )
+                    : Image.file(
+                        File(path),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
+                      )),
           ),
           if (isLast)
             Container(

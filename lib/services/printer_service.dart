@@ -267,10 +267,13 @@ Uint8List _computeEscPos(_EscPosInput input) {
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       final pixel = gray.getPixel(x, y);
-      final lum = pixel.r.toInt();
-      if (lum < 128) {
-        final byteIdx = y * bytesPerRow + (x ~/ 8);
-        pixelRows[byteIdx] |= (0x80 >> (x % 8));
+      final alpha = pixel.a.toInt();
+      if (alpha > 128) {
+        final lum = pixel.r.toInt();
+        if (lum < 160) {
+          final byteIdx = y * bytesPerRow + (x ~/ 8);
+          pixelRows[byteIdx] |= (0x80 >> (x % 8));
+        }
       }
     }
   }
