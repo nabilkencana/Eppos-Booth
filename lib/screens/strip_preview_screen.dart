@@ -110,7 +110,23 @@ class _StripPreviewScreenState extends State<StripPreviewScreen>
     PrinterAudioService.playPrinterSound();
 
     try {
-      // 1. Capture high-res receipt paper strip (pixelRatio: 2.0 cukup & cepat)
+      // ── iOS Fix: precache semua gambar ke Flutter image cache ──────────────
+      // Tanpa ini, Image.file() belum ter-commit ke GPU texture pada iOS Metal
+      // sehingga ScreenshotController menangkap area putih kosong.
+      for (final path in provider.capturedPhotos) {
+        try {
+          if (path.startsWith('http')) {
+            await precacheImage(NetworkImage(path), context);
+          } else {
+            final bytes = File(path).readAsBytesSync();
+            await precacheImage(MemoryImage(bytes), context);
+          }
+        } catch (_) {}
+      }
+      // Tunggu GPU flush agar semua texture siap sebelum screenshot
+      await Future.delayed(const Duration(milliseconds: 600));
+
+      // Capture nota strip
       final imageBytes = await _screenshotController.capture(
         pixelRatio: 2.0,
       );
@@ -692,33 +708,44 @@ class _ThermalReceiptPaper extends StatelessWidget {
   Widget _buildSinglePhotoFrame(String path, {double aspectRatio = 1.35, bool isLast = false}) {
     final isUrl = path.startsWith("http");
 
+    // ── ColorFilter.matrix grayscale ─────────────────────────────────────────
+    // PENTING: Jangan pakai `color: Colors.grey + BlendMode.saturation`!
+    // BlendMode compositing menyebabkan area foto menjadi transparan/putih saat
+    // ScreenshotController.capture() dipanggil di iOS Metal renderer.
+    // ColorFilter.matrix bekerja secara identik di iOS Metal dan Android Skia.
+    const grayscaleFilter = ColorFilter.matrix(<double>[
+      0.2126, 0.7152, 0.0722, 0, 0,
+      0.2126, 0.7152, 0.0722, 0, 0,
+      0.2126, 0.7152, 0.0722, 0, 0,
+      0,      0,      0,      1, 0,
+    ]);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
           color: const Color(0xFF18181B),
-          width: 3.5, // Thick raw thermal frame border
+          width: 3.5,
         ),
       ),
       child: Column(
         children: [
           AspectRatio(
             aspectRatio: aspectRatio,
-            child: isUrl
-                ? Image.network(
-                    path,
-                    fit: BoxFit.cover,
-                    color: Colors.grey,
-                    colorBlendMode: BlendMode.saturation,
-                    errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
-                  )
-                : Image.file(
-                    File(path),
-                    fit: BoxFit.cover,
-                    color: Colors.grey,
-                    colorBlendMode: BlendMode.saturation,
-                    errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
-                  ),
+            child: ColorFiltered(
+              colorFilter: grayscaleFilter,
+              child: isUrl
+                  ? Image.network(
+                      path,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
+                    )
+                  : Image.file(
+                      File(path),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _buildErrorPlaceholder(),
+                    ),
+            ),
           ),
           if (isLast)
             Container(

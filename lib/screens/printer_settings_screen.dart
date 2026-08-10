@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -15,7 +16,94 @@ class PrinterSettingsScreen extends StatefulWidget {
 class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   bool _isScanning = false;
   bool _isConnecting = false;
+  bool _isTestPrinting = false;
   String _connectingDeviceName = "";
+
+  /// Render nota test via Canvas lalu kirim ke printer thermal
+  Future<void> _runTestPrint(BuildContext context, dynamic printerService) async {
+    if (_isTestPrinting) return;
+    setState(() => _isTestPrinting = true);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      const double pageW = 384;
+      final bgPaint = Paint()..color = Colors.white;
+      final blackPaint = Paint()..color = Colors.black;
+      double y = 0;
+
+      canvas.drawRect(const Rect.fromLTWH(0, 0, pageW, 480), bgPaint);
+      canvas.drawRect(Rect.fromLTWH(0, y, pageW, 5), blackPaint); y += 14;
+      _drawText(canvas, 'EPPOS PHOTOBOOTH', pageW, y, fontSize: 22, bold: true, center: true); y += 32;
+      _drawText(canvas, 'UJI COBA CETAK NOTA', pageW, y, fontSize: 13, center: true); y += 24;
+      canvas.drawRect(Rect.fromLTWH(16, y, pageW - 32, 2), blackPaint); y += 10;
+
+      final now = DateTime.now();
+      final dateStr =
+          '${now.day.toString().padLeft(2,'0')}/${now.month.toString().padLeft(2,'0')}/${now.year}'
+          '  ${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}';
+
+      _drawText(canvas, 'Tanggal : $dateStr', pageW, y, fontSize: 13); y += 22;
+      _drawText(canvas, 'Printer : RPP02N / Eppos 58mm', pageW, y, fontSize: 13); y += 22;
+      _drawText(canvas, 'Status  : Terhubung (BLE)', pageW, y, fontSize: 13); y += 26;
+      canvas.drawRect(Rect.fromLTWH(16, y, pageW - 32, 2), blackPaint); y += 10;
+
+      // Kotak sample foto
+      canvas.drawRect(Rect.fromLTWH(32, y, pageW - 64, 100), Paint()..color = const Color(0xFFE5E7EB));
+      canvas.drawRect(Rect.fromLTWH(32, y, pageW - 64, 100),
+          Paint()..color = Colors.black..style = PaintingStyle.stroke..strokeWidth = 2);
+      _drawText(canvas, '[SAMPLE PHOTO FRAME]', pageW, y + 40, fontSize: 13, center: true); y += 116;
+
+      canvas.drawRect(Rect.fromLTWH(16, y, pageW - 32, 2), blackPaint); y += 10;
+      _drawText(canvas, 'Thank you for playing!', pageW, y, fontSize: 13, center: true); y += 22;
+      _drawText(canvas, 'www.eppos.id', pageW, y, fontSize: 12, center: true); y += 28;
+      canvas.drawRect(Rect.fromLTWH(0, y, pageW, 5), blackPaint); y += 12;
+
+      final picture = recorder.endRecording();
+      final img = await picture.toImage(pageW.toInt(), y.toInt());
+      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) throw Exception('Gagal render');
+
+      final pngBytes = byteData.buffer.asUint8List();
+      final success = await printerService.printReceiptImage(pngBytes);
+
+      messenger.showSnackBar(SnackBar(
+        content: Text(success
+            ? '\u2705 Test nota berhasil dicetak!'
+            : '\u274c Gagal cetak. Cek koneksi printer.'),
+        backgroundColor: success ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
+    } catch (e) {
+      debugPrint('[TestPrint] Error: $e');
+      messenger.showSnackBar(SnackBar(
+        content: Text('Error: $e'),
+        backgroundColor: const Color(0xFFDC2626),
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _isTestPrinting = false);
+    }
+  }
+
+  void _drawText(Canvas canvas, String text, double pageW, double y,
+      {double fontSize = 14, bool bold = false, bool center = false}) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+          color: Colors.black,
+        ),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    );
+    tp.layout(maxWidth: pageW - 32);
+    tp.paint(canvas, Offset(center ? (pageW - tp.width) / 2 : 16.0, y));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -446,46 +534,26 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                                   letterSpacing: 0.5,
                                 ),
                               ),
-                              onPressed: () async {
-                                if (!isConnected) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Text(
-                                        "Printer belum terhubung. Sambungkan printer terlebih dahulu.",
-                                      ),
-                                      backgroundColor: const Color(0xFFDC2626),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  );
-                                } else {
-                                  try {
-                                    const testMsg =
-                                        "=== TEST PRINT EPPOS ===\nPrinter Thermal OK!\nStatus: Terhubung\n========================\n\n";
-                                    debugPrint(testMsg);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text(
-                                          "Sinyal uji cetak dikirim ke printer thermal Eppos!",
-                                        ),
-                                        backgroundColor: const Color(
-                                          0xFF16A34A,
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
+                              onPressed: _isTestPrinting
+                                  ? null
+                                  : () async {
+                                      if (!isConnected) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: const Text(
+                                              'Printer belum terhubung. Sambungkan printer terlebih dahulu.',
+                                            ),
+                                            backgroundColor: const Color(0xFFDC2626),
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    );
-                                  } catch (e) {
-                                    debugPrint('[TestPrint] Error: $e');
-                                  }
-                                }
-                              },
+                                        );
+                                      } else {
+                                        await _runTestPrint(context, printerService);
+                                      }
+                                    },
                             ),
 
                             const Gap(12),
