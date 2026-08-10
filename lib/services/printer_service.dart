@@ -204,29 +204,53 @@ class PrinterService {
 
     _status = PrinterConnectionStatus.printing;
     try {
-      final escPosBytes =
-          await compute(_computeEscPos, _EscPosInput(imageBytes, 384));
-
-      if (escPosBytes.isEmpty) {
-        _status = PrinterConnectionStatus.connected;
-        return false;
-      }
-
       if (Platform.isAndroid &&
           _selectedDevice != null &&
           !_selectedDevice!.isBle) {
+        // Android: encode & kirim sekaligus via SPP socket (tidak ada masalah buffer)
+        final escPosBytes =
+            await compute(_computeEscPos, _EscPosInput(imageBytes, 384));
+        if (escPosBytes.isEmpty) {
+          _status = PrinterConnectionStatus.connected;
+          return false;
+        }
         await _androidBt.writeBytes(escPosBytes);
       } else if (_bleWriteCharacteristic != null) {
-        // Chunked BLE transmission (100 bytes/chunk) for iOS
-        const chunkSize = 100;
-        for (int i = 0; i < escPosBytes.length; i += chunkSize) {
-          final end = (i + chunkSize < escPosBytes.length)
-              ? i + chunkSize
-              : escPosBytes.length;
-          final chunk = escPosBytes.sublist(i, end);
-          await _bleWriteCharacteristic!
-              .write(chunk, withoutResponse: true);
-          await Future.delayed(const Duration(milliseconds: 20));
+        // iOS BLE: encode ke pita-pita 48px, kirim satu per satu dengan ACK
+        // Mencegah silent packet drop (writeWithoutResponse) & printer RAM overflow
+        final bands =
+            await compute(_buildIosBands, _EscPosInput(imageBytes, 384));
+        if (bands.isEmpty) {
+          _status = PrinterConnectionStatus.connected;
+          return false;
+        }
+
+        // Cek apakah karakteristik mendukung write WITH response
+        final useAck = _bleWriteCharacteristic!.properties.write;
+        const chunkSize = 20; // 20 byte — BLE 4.0 guaranteed payload
+
+        for (int bandIdx = 0; bandIdx < bands.length; bandIdx++) {
+          final band = bands[bandIdx];
+
+          // Kirim 1 pita dalam potongan 20-byte
+          for (int i = 0; i < band.length; i += chunkSize) {
+            final end = (i + chunkSize < band.length) ? i + chunkSize : band.length;
+            final chunk = band.sublist(i, end);
+
+            if (useAck) {
+              // Write WITH response: iOS CoreBluetooth menunggu ATT ACK
+              // sebelum lanjut — tidak ada packet drop
+              await _bleWriteCharacteristic!.write(chunk, withoutResponse: false);
+            } else {
+              await _bleWriteCharacteristic!.write(chunk, withoutResponse: true);
+              await Future.delayed(const Duration(milliseconds: 30));
+            }
+          }
+
+          // Jeda 200ms antar pita: beri waktu printer RPP02N memproses & cetak
+          if (bandIdx < bands.length - 1) {
+            await Future.delayed(const Duration(milliseconds: 200));
+          }
         }
       }
 
@@ -246,6 +270,7 @@ class _EscPosInput {
   const _EscPosInput(this.bytes, this.printerWidth);
 }
 
+// ── Android: encode seluruh gambar ke 1 ESC/POS payload ─────────────────────
 Uint8List _computeEscPos(_EscPosInput input) {
   final decoded = img.decodeImage(input.bytes);
   if (decoded == null) return Uint8List(0);
@@ -291,4 +316,69 @@ Uint8List _computeEscPos(_EscPosInput input) {
   out.add([0x1D, 0x56, 0x01]);
 
   return out.toBytes();
+}
+
+// ── iOS BLE: encode gambar ke List pita ESC/POS 48px ────────────────────────
+// Mengirim pita kecil satu per satu mencegah overflow buffer RAM printer RPP02N.
+List<Uint8List> _buildIosBands(_EscPosInput input) {
+  final decoded = img.decodeImage(input.bytes);
+  if (decoded == null) return [];
+
+  final resized = img.copyResize(
+    decoded,
+    width: input.printerWidth,
+    height: -1,
+    interpolation: img.Interpolation.average,
+  );
+
+  final gray = img.grayscale(resized);
+  final w = gray.width;
+  final totalH = gray.height;
+  final bytesPerRow = (w + 7) ~/ 8;
+  final xL = bytesPerRow & 0xFF;
+  final xH = (bytesPerRow >> 8) & 0xFF;
+
+  final List<Uint8List> result = [];
+
+  // Pita pertama: inisialisasi printer
+  final initBuilder = BytesBuilder();
+  initBuilder.add([0x1B, 0x40]); // ESC @ — reset
+  initBuilder.add([0x1B, 0x33, 0x00]); // ESC 3 0 — line spacing 0
+  initBuilder.add([0x1B, 0x61, 0x01]); // ESC a 1 — center align
+  result.add(initBuilder.toBytes());
+
+  // Pita gambar 48px — aman untuk RAM printer portable
+  const int bandH = 48;
+
+  for (int startY = 0; startY < totalH; startY += bandH) {
+    final currentH =
+        (startY + bandH <= totalH) ? bandH : (totalH - startY);
+
+    final pixelRows = Uint8List(bytesPerRow * currentH);
+
+    for (int y = 0; y < currentH; y++) {
+      for (int x = 0; x < w; x++) {
+        final pixel = gray.getPixel(x, startY + y);
+        final lum = pixel.r.toInt();
+        if (lum < 128) {
+          pixelRows[y * bytesPerRow + (x ~/ 8)] |= (0x80 >> (x % 8));
+        }
+      }
+    }
+
+    final yL = currentH & 0xFF;
+    final yH = (currentH >> 8) & 0xFF;
+    final bandBuilder = BytesBuilder();
+    bandBuilder.add([0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+    bandBuilder.add(pixelRows);
+    result.add(bandBuilder.toBytes());
+  }
+
+  // Pita terakhir: feed + cut
+  final tailBuilder = BytesBuilder();
+  tailBuilder.add([0x0A, 0x0A, 0x0A, 0x0A]);
+  tailBuilder.add([0x1D, 0x56, 0x01]);
+  result.add(tailBuilder.toBytes());
+
+  return result;
 }
