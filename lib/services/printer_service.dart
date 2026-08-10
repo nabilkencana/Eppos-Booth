@@ -339,14 +339,12 @@ List<Uint8List> _buildBands(_EscPosInput input) {
       final actualY = startY + y;
       for (int x = 0; x < w; x++) {
         final pixel = gray.getPixel(x, actualY);
-        // Untuk gambar JPEG/PNG: cek alpha dan luminansi
-        final alpha = pixel.a.toInt();
-        if (alpha > 64) {
-          final lum = pixel.r.toInt();
-          if (lum < 160) {
-            final byteIdx = y * bytesPerRow + (x ~/ 8);
-            pixelRows[byteIdx] |= (0x80 >> (x % 8));
-          }
+        // Threshold: semua piksel dengan luminansi < 200 dicetak (gelap & abu-abu sedang)
+        // Tidak ada pengecekan alpha — JPEG tidak punya alpha, PNG screenshot selalu opaque
+        final lum = pixel.r.toInt();
+        if (lum < 200) {
+          final byteIdx = y * bytesPerRow + (x ~/ 8);
+          pixelRows[byteIdx] |= (0x80 >> (x % 8));
         }
       }
     }
