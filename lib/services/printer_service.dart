@@ -271,6 +271,7 @@ class _EscPosInput {
 }
 
 // ── Android: encode seluruh gambar ke 1 ESC/POS payload ─────────────────────
+// Pipeline: resize → grayscale → Laplacian sharpen → threshold → ESC/POS bytes
 Uint8List _computeEscPos(_EscPosInput input) {
   final decoded = img.decodeImage(input.bytes);
   if (decoded == null) return Uint8List(0);
@@ -286,16 +287,27 @@ Uint8List _computeEscPos(_EscPosInput input) {
   final w = gray.width;
   final h = gray.height;
 
+  // Pre-read pixels ke flat array
+  final raw = List<int>.generate(w * h, (idx) {
+    return gray.getPixel(idx % w, idx ~/ w).r.toInt();
+  });
+
+  // Laplacian sharpening: 5*center - 4 neighbors
+  final sharp = List<int>.generate(w * h, (idx) {
+    final x = idx % w;
+    final y = idx ~/ w;
+    if (x == 0 || x == w - 1 || y == 0 || y == h - 1) return raw[idx];
+    return (5 * raw[idx] - raw[idx - 1] - raw[idx + 1]
+                          - raw[idx - w] - raw[idx + w]).clamp(0, 255);
+  });
+
   final bytesPerRow = (w + 7) ~/ 8;
   final pixelRows = Uint8List(bytesPerRow * h);
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      final pixel = gray.getPixel(x, y);
-      final lum = pixel.r.toInt();
-      if (lum < 128) {
-        final byteIdx = y * bytesPerRow + (x ~/ 8);
-        pixelRows[byteIdx] |= (0x80 >> (x % 8));
+      if (sharp[y * w + x] < 128) {
+        pixelRows[y * bytesPerRow + (x ~/ 8)] |= (0x80 >> (x % 8));
       }
     }
   }
@@ -319,10 +331,8 @@ Uint8List _computeEscPos(_EscPosInput input) {
 }
 
 // ── iOS BLE: encode gambar ke List pita ESC/POS 48px ────────────────────────
-// Threshold sederhana lum < 128 — sama seperti Android path.
-// ColorFilter.matrix grayscale di widget sudah menangani konversi warna dengan benar
-// pada iOS Metal, sehingga tidak perlu contrast stretch atau dithering tambahan.
-// Hasilnya: background putih bersih, kontras natural seperti gambar 1.
+// Pipeline: resize → grayscale → Laplacian sharpen → threshold → pita 48px
+// Sharpening membuat tepi wajah, rambut, dan teks lebih tajam di kertas thermal.
 List<Uint8List> _buildIosBands(_EscPosInput input) {
   final decoded = img.decodeImage(input.bytes);
   if (decoded == null) return [];
@@ -338,6 +348,27 @@ List<Uint8List> _buildIosBands(_EscPosInput input) {
   final gray = img.grayscale(resized);
   final w = gray.width;
   final totalH = gray.height;
+
+  // ── Step 1: Pre-read semua pixel ke flat array ────────────────────────────
+  // Lebih efisien dari memanggil getPixel() berulang kali dalam nested loop
+  final raw = List<int>.generate(w * totalH, (idx) {
+    return gray.getPixel(idx % w, idx ~/ w).r.toInt();
+  });
+
+  // ── Step 2: Laplacian Sharpening ─────────────────────────────────────────
+  // Kernel: center*5 - left - right - up - down
+  // Memperkuat tepi (edge) → wajah, rambut, dan teks tercetak lebih crisp
+  // Background flat (putih) tidak terpengaruh karena semua neighbor sama
+  final sharp = List<int>.generate(w * totalH, (idx) {
+    final x = idx % w;
+    final y = idx ~/ w;
+    // Piksel di tepi gambar: tidak diproses
+    if (x == 0 || x == w - 1 || y == 0 || y == totalH - 1) return raw[idx];
+    return (5 * raw[idx] - raw[idx - 1] - raw[idx + 1]
+                          - raw[idx - w] - raw[idx + w]).clamp(0, 255);
+  });
+
+  // ── Step 3: Bangun pita ESC/POS dari hasil sharpening ────────────────────
   final bytesPerRow = (w + 7) ~/ 8;
   final xL = bytesPerRow & 0xFF;
   final xH = (bytesPerRow >> 8) & 0xFF;
@@ -351,7 +382,7 @@ List<Uint8List> _buildIosBands(_EscPosInput input) {
   initBuilder.add([0x1B, 0x61, 0x01]); // ESC a 1 — center align
   result.add(initBuilder.toBytes());
 
-  // Pita gambar 48px — aman untuk RAM buffer printer portable RPP02N/Rongta
+  // Pita gambar 48px — aman untuk RAM buffer printer RPP02N/Rongta
   const int bandH = 48;
 
   for (int startY = 0; startY < totalH; startY += bandH) {
@@ -360,10 +391,8 @@ List<Uint8List> _buildIosBands(_EscPosInput input) {
 
     for (int y = 0; y < currentH; y++) {
       for (int x = 0; x < w; x++) {
-        final pixel = gray.getPixel(x, startY + y);
-        final lum = pixel.r.toInt();
-        // Threshold 128: piksel lebih gelap dari abu-abu tengah → cetak hitam
-        if (lum < 128) {
+        // Threshold 128 pada nilai yang sudah di-sharpen
+        if (sharp[(startY + y) * w + x] < 128) {
           pixelRows[y * bytesPerRow + (x ~/ 8)] |= (0x80 >> (x % 8));
         }
       }
